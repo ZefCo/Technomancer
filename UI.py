@@ -3,6 +3,7 @@ import ollama
 
 def format_history(msg: str, history: list[list[str, str]], system_prompt: str):
     '''
+    This allows the chatbot to "remember" what has been said before.
     '''
     chat_history = [{"role": "system", "content": system_prompt}]
 
@@ -18,6 +19,7 @@ def format_history(msg: str, history: list[list[str, str]], system_prompt: str):
 def generate_response(msg: str, history: list[list[str, str]], system_prompt: str,
                       model = "phi4"):
     '''
+    This allows the user and the chatbot to interact.
     '''
     chat_history = format_history(msg, history, system_prompt)
 
@@ -43,7 +45,10 @@ chatbot = gr.ChatInterface(
         # avatar_images = ["SuperMarioRPGSNESCoverArtUS.jpg", "Technomancer_Devin_Larson.jpg"],  # This was playing around with avatars. Need to find something copyright free in the future.
         # height = "64vh"
     ),
-    # additional_inputs = [],
+    additional_inputs = [
+        gr.Slider(minimum = 1, maximum = 100, value = 50, label = "Temperature"),  # controls how predictable the responses are. Will need to play with this to get a good idea of a "default" value
+        gr.Slider(minimum = 1, maximum = 500, value = 200, label = "Max Tokens")  # controls how long the responses are
+    ],
     title = "Technomancer",
     submit_btn = "⬅ Send",
     # retry_btn = "Regenerate Response",  # These are no longer in the latest version. Keeping because I like the idea of them, and would like to find a way to implement them.
@@ -51,4 +56,6 @@ chatbot = gr.ChatInterface(
     # clear_btn = "Clear History"
 )
 
-chatbot.launch()
+
+if __name__ == "__main__":
+    chatbot.launch()

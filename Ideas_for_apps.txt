@@ -1,0 +1,4 @@
+Name Generator
+Dice Roller
+Numerology Calculator (IDK good for CoC or something?)
+Table roller (finding indices on a random table generator)
