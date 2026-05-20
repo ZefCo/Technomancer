@@ -13,12 +13,14 @@ Gradio - for the UI
     https://www.youtube.com/watch?v=EON9jBnItUU
     https://medium.com/codex/building-your-first-ai-chatbot-with-ollama-and-gradio-e9667878941b
 LangChain
+    Also need langchain-ollama, langchain-community, pdfplumber, langchain-chroma, sentence-transformers, transformers (two different things)
     https://www.youtube.com/watch?v=1bUy-1hGZpI
     https://www.youtube.com/watch?v=tcqEUSNCn8I
 ChromaDB
     https://www.youtube.com/watch?v=UuepzspChuQ
 FastAPI (not implemented yet)
 Some sort of relational database? SQL?
+transformers
 
 This will be broken up into a series of folders (which will be an ever growing list)
 
