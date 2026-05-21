@@ -1,3 +1,13 @@
-SuperMarioRPGSNESCoverArtUS.jpg
-Technomancer_Devin_Larson.jpg
-*.pdf
+# copyright image, fun to use, but copyrighted
+SuperMarioRPGSNESCoverArtUS.jpg  
+Technomancer_Devin_Larson.jpg  
+
+# don't need every single pdf file that is going to be here uploaded.
+*.pdf  
+
+# Don't need the entire database pushed to git. This could change, but right now all of the database will be ignored.
+# Maybe huggingface will be useful? Look into that
+/DB_of_Holding  
+
+# This folder will be for uploading documents, a way to do it without the UI, and for testing.
+/Folder_of_Holding
