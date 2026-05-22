@@ -11,7 +11,7 @@ Adjust chunks and overlap to read documents properly,rag,5/20/26,
 Be able to have ollama interact with pdfs (notebook),rag,5/21/26,5/21/26
 Be able to have ollama interact with pdfs (terminal),rag,5/21/26
 Be able to have ollama interact with pdfs (UI),rag,5/21/26
-Create custom UI,ui,5/20/26, 
+Create custom UI,ui,5/20/26,5/22/26
 Allow for user to upload pdfs directly in UI,ui,5/20/26, 
 Allow user to choose llm model in UI,ui,5/20/26, 
 Allow user to upload avatar,ui,5/20/26, 
@@ -27,3 +27,4 @@ Be able to dynamically add documents to different collections without user input
 Be able to query all collections,rag,5/21/26,5/21/26
 Be able to query specific collections,rag,5/21/26
 Be able to add documents to additional collections,rag,5/21/26
+Organize UI files and chatbot files for final deployment,git,5/22/26,
