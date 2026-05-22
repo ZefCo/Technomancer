@@ -1,9 +1,9 @@
 import gradio as gr
 
 
-with gr.Blocks() as interface:
+with gr.Blocks() as page:
     with gr.Row():
-        chatbot = gr.Chatbot()
+        chatbot = gr.Chatbot(type = "messages")
 
     with gr.Row(variant = "compact"):
         with gr.Column(scale = 12):
@@ -16,7 +16,7 @@ with gr.Blocks() as interface:
     
     with gr.Row():
         with gr.Column():
-            upload_btn = gr.Button(value = "Upload File")
+            upload_btn = gr.Button(value = "Upload Document")
         with gr.Column():
             blank_btn = gr.Button(value = "Nothing")
         with gr.Column():
@@ -24,4 +24,4 @@ with gr.Blocks() as interface:
 
 
 if __name__ in "__main__":
-    interface.launch()
+    page.launch()
