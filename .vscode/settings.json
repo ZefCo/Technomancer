@@ -29,5 +29,7 @@
     "github.copilot.chat.setupTests.enabled": false,
     "github.copilot.chat.summarizeAgentConversationHistory.enabled": false,
     "github.copilot.chat.updated53CodexPrompt.enabled": false,
-    "terminal.integrated.initialHintCopilotCli": false
+    "terminal.integrated.initialHintCopilotCli": false,
+    "python-envs.defaultEnvManager": "ms-python.python:conda",
+    "python-envs.defaultPackageManager": "ms-python.python:conda"
 }
