@@ -1,5 +1,5 @@
 import gradio as gr
-import ui_front_page, ui_chat_page, ui_about_page, ui_other_page
+import ui_front_page, ui_chat_page, ui_about_page, ui_other_page, ui_upload_page
 
 
 with gr.Blocks() as page:
@@ -13,8 +13,11 @@ with page.route("Chatbot"):
 with page.route("About"):
     ui_about_page.page.render()
 
-with page.route("Other"):
-    ui_other_page.page.render()
+with page.route("Upload"):
+    ui_upload_page.page.render()
+
+# with page.route("Other"):
+#     ui_other_page.page.render()
 
 if __name__ in "__main__":
     page.launch()

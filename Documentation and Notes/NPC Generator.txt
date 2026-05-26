@@ -1,0 +1,14 @@
+NPC Generator
+
+Will have to be game dependent.
+
+D&D: just pull from the monster and DM manual.
+
+For SR: 
+find list of NPCs in books.
+Get mean, median, and range of stats for each NPC
+    Rank their strength?
+Develop Gaussian random distribution from them
+Get list of equpiment based on archetype and rating
+Turn that into a SQL file
+    turn THAT into a random table generator
