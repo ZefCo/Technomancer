@@ -11,3 +11,8 @@ Technomancer_Devin_Larson.jpg
 
 # This folder will be for uploading documents, a way to do it without the UI, and for testing.
 /Folder_of_Holding
+
+# want to ignore all vscode and pycache folders
+# these were already commited a while ago, so will need to remove them in the future
+/.vscode
+UI_Testing/__psycache__
