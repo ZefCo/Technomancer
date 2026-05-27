@@ -2,7 +2,7 @@ import gradio as gr
 import ui_front_page, ui_chat_page, ui_about_page, ui_upload_page
 
 
-with gr.Blocks() as page:
+with gr.Blocks(title = "Technomancer v0.1") as page:
     navbar = gr.Navbar(visible = False)
     ui_front_page.page.render()
 
@@ -20,4 +20,4 @@ with page.route("Upload"):
 #     ui_other_page.page.render()
 
 if __name__ in "__main__":
-    page.launch()
+    page.launch(server_name = "0.0.0.0", server_port = 7860)
