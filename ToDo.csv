@@ -9,8 +9,8 @@ Save chat history to chromadb,rag,5/20/26,
 Be able to reload chat history,rag,5/20/26, 
 Adjust chunks and overlap to read documents properly,rag,5/20/26, 
 Be able to have ollama interact with pdfs (notebook),rag,5/21/26,5/21/26
-Be able to have ollama interact with pdfs (terminal),rag,5/21/26,5/21/26
-Be able to have ollama interact with pdfs (UI),rag,5/21/26
+Be able to have ollama interact with pdfs (terminal),rag,5/21/26,
+Be able to have ollama interact with pdfs (UI),rag,5/21/26,
 Create custom UI,ui,5/20/26,5/22/26
 Have custom UI work with Ollama,ui,5/20/26,5/26/26
 Allow for user to upload pdfs directly in UI,ui,5/20/26, 
@@ -22,12 +22,12 @@ Dice roller,api,5/20/26,
 NPC generator,api,5/20/26,
 Name Generator,api,5/20/26,
 Initiative tracker,api,5/20/26,
-Be able to modify text files after upload,rag,5/21/26
-Find ways to preserve the database between multiple computers,git,5/21/26
-Find ways to preserve the fine tuned model between multiple computers,git,5/21/26
-Be able to dynamically add documents to different collections without user input,rag,5/21/26
+Be able to modify text files after upload,rag,5/21/26,
+Find ways to preserve the database between multiple computers,git,5/21/26,
+Find ways to preserve the fine tuned model between multiple computers,git,5/21/26,
+Be able to dynamically add documents to different collections without user input,rag,5/21/26,
 Be able to query all collections,rag,5/21/26,5/21/26
-Be able to query specific collections,rag,5/21/26
-Be able to add documents to additional collections,rag,5/21/26
+Be able to query specific collections,rag,5/21/26,
+Be able to add documents to additional collections,rag,5/21/26,
 Organize UI files and chatbot files for final deployment,git,5/22/26,
-Comment and explain all code,git,5/26/26
+Have Gradio point to a file,ui,5/26/26,
