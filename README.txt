@@ -51,3 +51,5 @@ For the chunk overlap, 10-20% of the chunk size is great.
 NOTE ON COLLECTIONS
 
 Normally there are rules about how the named collections can be formated. To deal with this, all named collections are turned into an ascii string, which should preserve the original rule book system name. For this reason, the collection name for rule books should be limited to a maximum length of 120 characters. Normally it is allowed to be 3 to 512 characters for a ChromaDB collection, however, since they are being turned into an ascii representation of 2-3 numbers which are then spaced by an underscore, this really limits it to 512/4 = 128. In practice it should be limited to 120, just in case an ascii representation is greater than 4.
+
+As of 5/28/26, to use the RAG pipeline, the collection must be selected directly. This allows the user to select either a specific collection or general chat. The downside is that this requires more manual input then desired.
