@@ -1,28 +1,28 @@
 # import chromadb
 
-# from langchain_classic.prompts import ChatPromptTemplate  # need to figure out how to get around this
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import PDFPlumberLoader
-# from langchain_community.llms.ollama import Ollama
-from langchain_chroma import Chroma
-from langchain_community.embeddings import OllamaEmbeddings
+# Something on this page is causing it to throw out warning and be slow to upload.
 
+# from langchain_classic.prompts import ChatPromptTemplate  # need to figure out how to get around this -> use langchain_core instead of classic
+
+from langchain_chroma import Chroma
+from langchain_community.document_loaders import PDFPlumberLoader
+from langchain_community.document_loaders import TextLoader
+from langchain_community.document_loaders import UnstructuredCSVLoader
+from langchain_community.embeddings import OllamaEmbeddings
+from langchain_community.chat_models import ChatOllama
+from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.runnables import RunnableBranch, RunnableLambda, RunnablePassthrough
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 # import os
 
 # import pandas
 import pathlib
 cwd = pathlib.Path.cwd()
 chroma_database_dir = cwd / "DB_of_Holding"
-import re
 
-
-# class RAG_input:
-#     '''
-#     This is the RAG pipeline from the UI and Ollama to the ChromaDB using LangChain.
-#     '''
-
-#     def __init__(self):
-#         pass
+print("Finished loading RAG Pipeline")
 
 def _clean_collection(collection: str):
     '''
@@ -30,9 +30,11 @@ def _clean_collection(collection: str):
     
     Because it turns it into a series of ascii values in the form x_x_x_x where each x is an ascii value of 2-3 numbers, this means the input string must be less than 128 characters long. That's OK. I doubt anyone will want to title a collection that long.
     '''
-    ascii_collection = f"{ord(collection[0])}"
-    for c in collection[1:len(collection)]:
-        ascii_collection = f"{ascii_collection}_{ord(c)}"
+    # ascii_collection = f"{ord(collection[0])}"
+    # for c in collection[1:len(collection)]:
+    #     ascii_collection = f"{ascii_collection}_{ord(c)}"
+
+    ascii_collection = "_".join(str(ord(c)) for c in collection)
 
     if len(ascii_collection) < 3:
         for _ in range(3 - len(ascii_collection)): ascii_collection = ascii_collection + "_{ord(z)}"
@@ -41,6 +43,17 @@ def _clean_collection(collection: str):
         ascii_collection = ascii_collection[:512]
 
     return ascii_collection
+
+
+def retrieve_collection(collection:str):
+    '''
+    Turns the ascii collection into a human readable form.
+    '''
+    return "".join(chr(int(code)) for code in collection.split("_"))
+
+
+
+### ---------------------------------- RAG INPUT ---------------------------------- ###
 
 
 def _create_chunks(document, chunk_size, chunk_overlap, *args, **kwargs):
@@ -73,10 +86,17 @@ def load_documents(file, collection, chunk_size, chunk_overlap, *args, **kwargs)
     print(f"#####\nChunk Size = {chunk_size}, {type(chunk_size)}\nOverlap = {chunk_overlap}, {type(chunk_overlap)}\n#####")
     document = None
     chunks = None
-    # for file in self._yield_documents():
+    DocLoader = None
+
     if file.suffix == ".pdf":
-        document = _load_pdf(file)
+        DocLoader = PDFPlumberLoader
+    elif file.suffix == ".txt":
+        DocLoader = TextLoader
+    elif file.suffix == ".csv":
+        DocLoader = UnstructuredCSVLoader  # this one might need some more testing, as csv files have headers and those might need to be read in properly.
     
+    document = _load_document(file, DocLoader)
+
     if document is not None:
         chunks = _create_chunks(document, chunk_size, chunk_overlap)
 
@@ -88,6 +108,34 @@ def _load_pdf(file_path):
     '''
     '''
     loader = PDFPlumberLoader(file_path)
+    document = loader.load()
+
+    if not document:
+        return None
+    
+    return document
+
+
+def _load_txt(file_path):
+    '''
+    '''
+    loader = TextLoader(file_path)
+    document = loader.load()
+
+    if not document:
+        return None
+    
+    return document
+
+
+def _load_document(file_path, DocLoader):
+    '''
+    Generic document loader function.
+    '''
+    if DocLoader is None:
+        return None
+
+    loader = DocLoader(file_path)
     document = loader.load()
 
     if not document:
@@ -147,3 +195,78 @@ def _metadata_IDs(chunks, *args, **kwargs):
 
     return chunks    
 
+
+### ---------------------------------- RAG QUERY ---------------------------------- ###
+
+
+def _get_retriever(collection: str, k: int = 10):
+    '''
+    Returns a retriever for the given collection name.
+    '''
+    ascii_collection = _clean_collection(collection)
+    db = Chroma(persist_directory = str(chroma_database_dir), embedding_function = _get_embeddings(), collection_name = ascii_collection)
+    return db.as_retriever(search_kwargs = {"k": k})
+
+
+def _format_docs(docs):
+    '''
+    Formats retrieved documents into a single context string. Includes source metadata so the LLM can cite pages.
+    '''
+    formatted = []
+    for doc in docs:
+        source = doc.metadata.get("source", "unknown")
+        page = doc.metadata.get("page", "?")
+        formatted.append(f"[Source: {source}, Page: {page}]\n{doc.page_content}")
+    return "\n\n".join(formatted)
+
+
+def _gradio_history_to_langchain(history: list):
+    '''
+    Converts Gradio messages format to LangChain message objects. Skips empty assistant placeholders.
+    '''
+    messages = []
+    for item in history:
+        if item["role"] == "user": messages.append(HumanMessage(content = item["content"]))
+        elif item["role"] == "assistant" and item["content"]: messages.append(AIMessage(content = item["content"]))
+
+    return messages
+
+def query_rag(message: str, history: list, collection: str, system_content: str, model: str):
+    '''
+    Streaming RAG query. Yields response chunks.
+    Uses a single prompt that retrieves context but instructs the LLM
+    to ignore it if irrelevant — handles both rules and general questions.
+    '''
+    retriever = _get_retriever(collection)
+    llm = ChatOllama(model=model)
+
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", system_content + """
+
+Rulebook context has been retrieved and is provided below. Use it if it is 
+relevant to the question. If it is not relevant to the question, ignore it 
+entirely and answer conversationally from your own knowledge.
+
+Retrieved context:
+{context}"""),
+        MessagesPlaceholder(variable_name="history"),
+        ("human", "{question}")
+    ])
+
+    lc_history = _gradio_history_to_langchain(history)
+
+    chain = (
+        {
+            "context": (lambda x: x["question"]) | retriever | _format_docs,
+            "question": lambda x: x["question"],
+            "history": lambda x: x["history"]
+        }
+        | prompt
+        | llm
+        | StrOutputParser()
+    )
+
+    response = ""
+    for chunk in chain.stream({"question": message, "history": lc_history}):
+        response += chunk
+        yield response

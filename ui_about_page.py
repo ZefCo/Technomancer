@@ -1,5 +1,5 @@
 import gradio as gr
-
+print("Finished loading About Page")
 
 with gr.Blocks() as page:
     title = gr.HTML("<h1>About</h1>")
@@ -12,6 +12,9 @@ with gr.Blocks() as page:
     other = gr.HTML("<section>"
                     "<h2> Other Features </h2>"
                     "<p>As of 5/31/26, only the chatbot and uploading of documents are working. Eventually other features will be added, such as an NPC generator for certain games.")
+    copyright = gr.HTML("<section>"
+                        "<h2> Hosted Games </h2>"
+                        "<p> There are a few games provided here by default. Those games are: Enchanted Realms and Super Hero Fun (both in Public Domain), and Codename: Spandex (which is under creative commons. Also this is a clone of Squadron UK, so if you like C:S check out that one.)")
 
 if __name__ in "__main__":
     page.launch()

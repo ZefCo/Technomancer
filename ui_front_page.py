@@ -3,6 +3,8 @@ import socket
 
 IP: str = socket.gethostbyname(socket.gethostname())
 
+print("Finished Loading Front Page")
+
 
 with gr.Blocks() as page:
     title = gr.HTML("<h1>Technomancer</h1>")
