@@ -56,8 +56,8 @@ with gr.Blocks() as page:
             upload_btn = gr.Button(value = "Upload Document")
         with gr.Column():
             blank_btn = gr.Button(value = "Nothing Yet")
-        with gr.Column():
-            logout_btn = gr.Button(value = "Return Home", link = "http://127.0.0.1:7860/")
+        # with gr.Column():
+            # logout_btn = gr.Button(value = "Return Home", link = "http://127.0.0.1:7860/")
 
     with gr.Row():
         with gr.Accordion(label = "Advanced Features", open = False):

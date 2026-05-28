@@ -1,0 +1,14 @@
+embedding_models:
+- qwen3
+models:
+- phi4
+rule_systems:
+- AD&D
+- CoC
+- Coyote & Crow
+- D&D5e
+- Rifts
+- SR2
+- SR3
+- SR4
+- SR5
