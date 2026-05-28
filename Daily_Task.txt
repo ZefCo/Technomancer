@@ -2,6 +2,7 @@
 -Change models as desired
 -Update collections in the drop down menu on the fly
 -Pass collections to browser state variable
+-Enable sliders for Chunk Size and Overlap
 5/28/26
 -Create Env Test - Done
 -Have Ollama read from Chroma DB - Done, but requires checking specific databases, want a more general approach
