@@ -1,3 +1,7 @@
+5/29/26
+-Change models as desired
+-Update collections in the drop down menu on the fly
+-Pass collections to browser state variable
 5/28/26
 -Create Env Test - Done
 -Have Ollama read from Chroma DB - Done, but requires checking specific databases, want a more general approach
