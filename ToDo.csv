@@ -1,16 +1,16 @@
 Task,Branch,Start,Finish
-Create RAG pipeline,rag,5/20/26,
+Create RAG pipeline,rag,5/20/26,5/28/26
 Be able to read pdfs via langchain,rag,5/20/26,5/20/26
-Be able to read txt files into langchain,rag,5/20/26,
+Be able to read txt files into langchain,rag,5/20/26,5/28/26
 Be able to ingest pdfs to chromadb,rag,5/20/26,5/21/26
-Be able to ingest txt files into chromadb,rag,5/20/26, 
+Be able to ingest txt files into chromadb,rag,5/20/26,5/28/26
 Be able to read tables properly,rag,5/20/26, 
 Save chat history to chromadb,rag,5/20/26,
 Be able to reload chat history,rag,5/20/26, 
 Adjust chunks and overlap to read documents properly,rag,5/20/26, 
 Be able to have ollama interact with pdfs (notebook),rag,5/21/26,5/21/26
 Be able to have ollama interact with pdfs (terminal),rag,5/21/26,5/21/26
-Be able to have ollama interact with pdfs (UI),rag,5/21/26,
+Be able to have ollama interact with pdfs (UI),rag,5/21/26,5/28/26
 Create custom UI,ui,5/20/26,5/22/26
 Have custom UI work with Ollama,ui,5/20/26,5/26/26
 Allow for user to upload pdfs directly in UI,ui,5/20/26,5/27/26
@@ -27,10 +27,20 @@ Find ways to preserve the database between multiple computers,git,5/21/26,
 Find ways to preserve the fine tuned model between multiple computers,git,5/21/26,
 Be able to dynamically add documents to different collections without user input,rag,5/21/26,
 Be able to query all collections,rag,5/21/26,5/21/26
-Be able to query specific collections,rag,5/21/26,
+Be able to query specific collections,rag,5/21/26,5/28/26
 Be able to add documents to additional collections,rag,5/21/26,5/27/26
 Organize UI files and chatbot files for final deployment,git,5/22/26,
 Have Gradio point to a file,ui,5/26/26,5/27/26
 Use a YAML file (or something better) for pushing and pulling settings,ui,5/27/26,5/27/26
-Add logger output for RAG pipeline,rag,5/26/26
+Add logger output for RAG pipeline,rag,5/26/26,
 Replace OllamaEmbeddings as it is depreciated and will be replaced,rag,5/27/26,
+Create Env Test file for making sure dependencies are installed,git,5/28/26,5/28/26
+Separate settings files instead of having just one file,git,5/28/26,
+Investigate best way to upload and pass settings and functions in gradio,ui,5/28/26,5/28/26
+Move some/most/all of the ui functions to a UI function script or into a series of classes,ui,5/28/26,
+Be able to pull route conversations without having to use buttons,rag,5/28/26,
+Be able to get all documents loaded to database,rag,5/28/26,
+Be able to get all collections in database,rag,5/28/26,
+Implement global-system-browser states for passing settings,ui,5/28/26,
+Implement progress bar for file uploading,ui,5/28/26,
+Clear file upload area after file uploaded,ui,5/28/26

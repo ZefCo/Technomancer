@@ -1,0 +1,5 @@
+5/28/26
+-Create Env Test - Done
+-Have Ollama read from Chroma DB - Done, but requires checking specific databases, want a more general approach
+-Be able to select models in UI - Done ish. Can be done, but have to distinguish between embedding and language models
+-Be able to delete documents in Gradio 

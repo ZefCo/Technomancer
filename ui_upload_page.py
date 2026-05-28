@@ -1,12 +1,14 @@
 import gradio as gr
 from RAG_pipeline import load_documents
-from ui_functions import load_settings, write_rules
+from ui_functions import load_settings, write_settings_index, clear_button
 
 CHUNK_SIZE = 512
 CHUNK_OVERLAP = 50
 SETTINGS = load_settings()
 RULE_SYSTEMS = SETTINGS["rule_systems"]
 # RAG_in = RAG_input()
+
+print("Finished Loading Upload page")
 
 with gr.Blocks() as page:
     chunk_size = gr.State(value = 512)
@@ -37,10 +39,17 @@ with gr.Blocks() as page:
                 with gr.Column():
                     new_rule_system = gr.Textbox(label = None, submit_btn = True, placeholder = "Input a new rule system or collection")
     
+    with gr.Row():
+        with gr.Accordion(label = "Documents", open = False):
+            with gr.Row():
+                with gr.Column():
+                    available_collections = gr.Dropdown(choices = ["Collection 1", "Collection 2", "Collection 3"], info = "Choice of different collections", interactive = True)
+                with gr.Column():
+                    available_documents = gr.Dropdown(choices = ["Doc 1", "Doc 2", "Doc 3"], info = "All available documents in that collection", interactive = True)
 
-    gr.Button("Delete Document (not working yet)")
-    warning = gr.HTML("<h2>The following is here only for testing purposes and will be removed in the future!</h2><h2>Do not press unless you mean it!</h2>")
-    gr.Button("Delete Database")
+    # gr.Button("Delete Document (not working yet)")
+    # warning = gr.HTML("<h2>The following is here only for testing purposes and will be removed in the future!</h2><h2>Do not press unless you mean it!</h2>")
+    # gr.Button("Delete Database")
 
     def add_new_rule_system(new_system, system_list):
         '''
@@ -57,9 +66,9 @@ with gr.Blocks() as page:
         '''
         return new_collection
 
-    new_rule_system.submit(fn = add_new_rule_system, inputs = [new_rule_system, rule_systems], outputs = [new_rule_system, rule_system_dd]).then(write_rules, inputs = [master_settings, rule_systems, index_id])
+    new_rule_system.submit(fn = add_new_rule_system, inputs = [new_rule_system, rule_systems], outputs = [new_rule_system, rule_system_dd]).then(write_settings_index, inputs = [master_settings, rule_systems, index_id])
     rule_system_dd.change(fn = update_collection, inputs = rule_system_dd, outputs = collection)
-    upload_file.upload(fn = load_documents, inputs = [upload_file, collection, chunk_size, chunk_overlap])
+    upload_file.upload(fn = load_documents, inputs = [upload_file, collection, chunk_size, chunk_overlap]).then(fn = clear_button)
 
 if __name__ in "__main__":
     page.launch()
