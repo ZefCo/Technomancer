@@ -1,0 +1,10 @@
+gradio
+ollama
+langchain
+langchain-community
+langchain-chroma
+langchain-core
+langchain-text-splitters
+pdfplumber
+chromadb
+yaml
