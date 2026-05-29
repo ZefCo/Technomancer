@@ -16,4 +16,4 @@ Technomancer_Devin_Larson.jpg
 # these were already commited a while ago, so will need to remove them in the future
 /.vscode
 UI_Testing/__psycache__
-/__psychache__
+*/__psychache__
