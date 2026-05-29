@@ -24,6 +24,10 @@ transformers
 
 USE
 
+MODELS
+
+You can install any Ollama model you want, but you must install a language model and an embedding model. Multiple models can be installed, and you can switch between them (as of 5/29/26, only the language model can be switched, the embedding model is hard coded to qwen3). If you are familiar with how to make new models, you can also design your own from the ones installed, and use those. However, realize the system prompt from Technomancer might blow that out.
+
 WEB UI
 
 To interact, make sure that the requirements are installed and satisfied (easily done in Anaconda), activate the python environment where those requirements are installed, and run start_up.py. This starts up the server on the local device at URL "0.0.0.0:7860". To get to the web interface, go to any web browser and use the IP of the host device at port 7860. For example, if the host device is at 123.456.7.890, the IP address for the web UI is 123.456.7.890:7860. If connecting *on* the host device, you can additionally use the local host ip with the port number, which is typically something like 127.0.0.1:7860. Currently there is no login, you are brought straight to the splash page. 
@@ -32,7 +36,7 @@ Right now the chat is not persistent, and will be refreshed once the page is ref
 
 DOCUMENT RETRIEVAL
 
-This is not meant as generative AI. If this sounds a little defensive, it is. I am not trying to replace imagination here, just make getting rules easier.
+This is mostly designed as a document retrieval program to quickly reference and pull existing rules, notes, tables, etc. from a database. This is not meant as generative AI: I am not trying to replace imagination here, just make getting rules easier.
 
 Can it be used as such? I guess so. It's using an LLM to interact with several other features, so it would be possible to add in something to generate RPG prompts, but that is not what this was designed for. This is meant to take all the tedious and overwhelming things in RPGs, like creating NPCs on the fly, and offload that to a computer program. It is meant as a tool to make the workload easier.
 
