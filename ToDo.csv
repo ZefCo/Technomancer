@@ -50,3 +50,4 @@ Sort embedding modeles and language models,ui,5/29/26,5/29/26
 Auto adjust overlap to be 10% of size automatically yet allow user to manually adjust later,rag,5/29/26,
 Find way to better display documents in Chat bot area,ui,5/29/26,
 Add button for master database,rag,5/29/26,
+Add epub functionality to ingest pipline,rag,5/29/26,
