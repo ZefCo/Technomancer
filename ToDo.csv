@@ -51,3 +51,4 @@ Auto adjust overlap to be 10% of size automatically yet allow user to manually a
 Find way to better display documents in Chat bot area,ui,5/29/26,
 Add button for master database,rag,5/29/26,
 Add epub functionality to ingest pipline,rag,5/29/26,
+Make sure DB_of_Holding exists at runtime,rag,5/29/26,
