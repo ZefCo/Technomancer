@@ -1,8 +1,14 @@
+6/1/26
+-Get logging system started
+-Get query routed system started/investigated
 5/29/26
--Change models as desired
--Update collections in the drop down menu on the fly
--Pass collections to browser state variable
--Enable sliders for Chunk Size and Overlap
+-Delete files from database - done
+-Get rule systems from database - done
+-Reenable RAG pipeline - done
+-Change models as desired - Done
+-Update collections in the drop down menu on the fly - Done
+-Pass collections to browser state variable - Done
+-Enable sliders for Chunk Size and Overlap - Done
 5/28/26
 -Create Env Test - Done
 -Have Ollama read from Chroma DB - Done, but requires checking specific databases, want a more general approach

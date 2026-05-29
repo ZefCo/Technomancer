@@ -1,19 +1,28 @@
-# copyright image, fun to use, but copyrighted
-SuperMarioRPGSNESCoverArtUS.jpg  
-Technomancer_Devin_Larson.jpg  
-
 # don't need every single pdf file that is going to be here uploaded.
 *.pdf  
 
 # Don't need the entire database pushed to git. This could change, but right now all of the database will be ignored.
 # Maybe huggingface will be useful? Look into that
 /DB_of_Holding  
+/DB_of_Holding_test
 
 # This folder will be for uploading documents, a way to do it without the UI, and for testing.
 /Folder_of_Holding
 
 # want to ignore all vscode and pycache folders
-# these were already commited a while ago, so will need to remove them in the future
+# the folders themselves are OK to upload, I just don't want the files in them.
 /.vscode
-UI_Testing/__psycache__
-*/__psychache__
+/__pycache__
+UI_Testing/__pycache__
+*/__pycache__
+*.pyc
+
+
+# Generally, don't want any images in the folders.
+*.jpg
+*.png
+/Images
+
+# In case there are files I want to use locally but don't need to share on git
+/Misc
+/Other
