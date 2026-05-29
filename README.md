@@ -8,6 +8,8 @@ Due to copyright laws, the database is not hosted here, and instead the user mus
 
 REQUIREMENTS
 
+A list of requirements are in the requirements.txt file.
+
 Ollama - uses Phi4, though other models can be used
     currently uses phi4 and qwen3 for language and embedding. This is hard coded, though there are plans to make this more adaptable.
 Gradio - for the UI
