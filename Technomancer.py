@@ -10,6 +10,9 @@ cwd = pathlib.Path.cwd()
 SYSTEM_CONTENT = "You are a DM for tabletop RPGs named Technomancer and are friendly. Assume the user already knows a lot of the terminology. You are not meant to generate new campaign ideas, rules, but are meant to help reference rules, tables, pages, NPCs, and the like."
 RULE_SYSTEMS = find_collections()  # this will be the various collections in the database.
 LANG_MODELS, EMBED_MODELS = sort_models()
+DBoH = cwd / "DB_of_Holding"
+
+DBoH.mkdir(exist_ok = True, parents = True)
 
 
 with gr.Blocks(title = "Technomancer v0.5") as Technomancer:

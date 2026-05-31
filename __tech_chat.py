@@ -9,6 +9,7 @@ def create_chat(system_content, rule_systems, models):
     '''
     '''
     documents_listed = gr.State([])
+    no_sys_prompt = gr.State(value = "")
     with gr.Blocks() as chat:
         with gr.Row():
             chatbot = gr.Chatbot(type = "messages")
@@ -21,6 +22,8 @@ def create_chat(system_content, rule_systems, models):
                     save_btn = gr.Button(value = "Save Chat to DBoH (not implimented yet)")
                 with gr.Row():
                     clear_tn = gr.ClearButton([msg, chatbot], value = "Clear Chat")
+                with gr.Row():
+                    stop_btn = gr.Button(value = "Stop")
 
         with gr.Row():
             with gr.Accordion(label = "Documents", open = False) as docs:
@@ -38,20 +41,26 @@ def create_chat(system_content, rule_systems, models):
         with gr.Row():
             with gr.Accordion(label = "Advanced Features", open = False) as adv_feat:
                 gr.Markdown("Note, changing some of these features mid conversation might cause confusion/hallucinations within the chatbot.")
-                active_prompt_display = gr.Textbox(label = "Current System State", value = system_content, visible = False, interactive = False)
-                change_sys_prompt = gr.Textbox(show_label = True, placeholder = None, label = "Change System Prompt: Press enter to update", submit_btn = True)
+                with gr.Row():
+                    active_prompt_display = gr.Textbox(label = "Current System State", value = system_content, visible = False, interactive = False)
+                    change_sys_prompt = gr.Textbox(show_label = True, placeholder = None, label = "Change System Prompt: Press enter to update", submit_btn = True)
+                clear_sys_prompt = gr.Button(value = "Clear system prompt")
                 model_choice = gr.Dropdown(choices = [], label = "Model Choice", info = "This will report both Language models and Embedding models: please know which one is which when selecting here! You want the Language model.", interactive = True)
 
         # Need to trigger the updates when the according is expanded or collapsed. That way we can easily pass in the state variables.
-        adv_feat.expand(fn = update_textbox, inputs = [system_content], outputs = [change_sys_prompt]).then(fn = update_drop_down, inputs = [models], outputs = [model_choice]).then(fn = update_drop_down, inputs = [rule_systems], outputs = [collection_choice])
-        adv_feat.collapse(fn = update_textbox, inputs = [system_content], outputs = [change_sys_prompt]).then(fn = update_drop_down, inputs = [models], outputs = [model_choice]).then(fn = update_drop_down, inputs = [rule_systems], outputs = [collection_choice])
+        # adv_feat.expand(fn = update_textbox, inputs = [system_content], outputs = [change_sys_prompt]).then(fn = update_drop_down, inputs = [models], outputs = [model_choice]).then(fn = update_drop_down, inputs = [rule_systems], outputs = [collection_choice])
+        # adv_feat.collapse(fn = update_textbox, inputs = [system_content], outputs = [change_sys_prompt]).then(fn = update_drop_down, inputs = [models], outputs = [model_choice]).then(fn = update_drop_down, inputs = [rule_systems], outputs = [collection_choice])
         
         docs.expand(fn = update_drop_down, inputs = [rule_systems], outputs = [collection_choice])
 
-        msg.submit(user_submit, [msg, chatbot], [msg, chatbot], queue = False).then(technomancer_response, [chatbot, system_content, model_choice, collection_choice, use_rag_toggle], chatbot)
+        clear_sys_prompt.click(update_system_prompt, [no_sys_prompt, system_content], [system_content, active_prompt_display, change_sys_prompt]).then(update_textbox, [system_content], [change_sys_prompt])
+
+        chat_response = msg.submit(user_submit, [msg, chatbot], [msg, chatbot], queue = False).then(technomancer_response, [chatbot, system_content, model_choice, collection_choice, use_rag_toggle], chatbot)
         change_sys_prompt.submit(update_system_prompt, [change_sys_prompt, system_content], [system_content, active_prompt_display, change_sys_prompt]).then(update_textbox, [system_content], [change_sys_prompt])
         collection_choice.select(fn = find_documents, inputs = [collection_choice], outputs = [documents_listed]).then(fn = update_drop_down, inputs = [documents_listed], outputs = [available_documents])
+        stop_btn.click(fn = None, inputs = None, outputs = None, cancels = [chat_response])
 
+        chat.load(fn = update_textbox, inputs = [system_content], outputs = [change_sys_prompt]).then(fn = update_drop_down, inputs = [models], outputs = [model_choice]).then(fn = update_drop_down, inputs = [rule_systems], outputs = [collection_choice])
 
     return chat
 

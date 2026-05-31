@@ -1,3 +1,4 @@
+
 Task,Branch,Start,Finish
 Create RAG pipeline,rag,5/20/26,5/28/26
 Be able to read pdfs via langchain,rag,5/20/26,5/20/26
@@ -45,11 +46,17 @@ Be able to get all collections in database,rag,5/28/26,5/29/26
 Implement global-system-browser states for passing settings,ui,5/28/26,5/29/26
 Implement progress bar for file uploading,ui,5/28/26,
 Clear file upload area after file uploaded,ui,5/28/26,
-Find way to update Upload page Rule systems and textbox without adjusting accordion,ui,5/29/26,
+Find way to update Upload page Rule systems and textbox without adjusting accordion,ui,5/29/26,5/30/26
 Sort embedding modeles and language models,ui,5/29/26,5/29/26
 Auto adjust overlap to be 10% of size automatically yet allow user to manually adjust later,rag,5/29/26,
 Find way to better display documents in Chat bot area,ui,5/29/26,
 Add button for master database,rag,5/29/26,
-Add epub functionality to ingest pipline,rag,5/29/26,
+Add epub functionality to ingest pipline,rag,5/29/26,5/30/26
 Make sure DB_of_Holding exists at runtime,rag,5/29/26,
 Update Env Test to include proper links to the libraries needed,git,5/29/26,
+Test docx ingestion,rag,5/30/26, 
+Test csv ingestion,rag,5/30/26, 
+test txt ingestion,rag,5/30/26, 
+Test epub ingestion,rag,5/30/26, 
+Add metadata tags for documents,rag,5/29/26, 
+Add metadata to documents after ingestion,rag,5/30/26, 

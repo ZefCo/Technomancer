@@ -5,6 +5,7 @@
 # Maybe huggingface will be useful? Look into that
 /DB_of_Holding  
 /DB_of_Holding_test
+/DB_of_Holding*
 
 # This folder will be for uploading documents, a way to do it without the UI, and for testing.
 /Folder_of_Holding
