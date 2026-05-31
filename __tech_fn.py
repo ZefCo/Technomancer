@@ -3,6 +3,41 @@ import subprocess
 import ollama
 import gradio as gr
 import re
+import pathlib
+import yaml
+cwd = pathlib.Path.cwd()
+path_settings_folder = cwd / "Settings"
+
+
+
+def append_state_list(states, state):
+    '''
+    Updates a state list with a new stat added.
+    '''
+    if state and state not in tuple(states):
+        states.append(state)
+        states.sort()
+    return states
+
+
+def change_state_list(state_list):
+    '''
+    Changes a state list to another state.
+    '''
+    return state_list
+
+
+def check_path(paths):
+    '''
+    Checks to make sure the path is a valid path and exists. Transforms it to a string and returns the list.
+    '''
+    path: pathlib.Path
+    return_paths = list()
+    for path in paths:
+        path.mkdir(parents = True, exist_ok = True)
+        return_paths.append(str(path))
+
+    return return_paths
 
 
 
@@ -14,6 +49,40 @@ def find_models():
     lines = result.stdout.strip().splitlines()[1:]  # Skip header line
     models = [line.split()[0] for line in lines]  # Get model names from the first column
     return models
+
+
+def load_paths():
+    '''
+    Loads all the Database paths the user has saved in the settings file.
+    '''
+    paths = import_setting("DB_Paths.yaml")
+
+    DBoH = cwd / paths["default_path"]
+    alternatives = paths["alternative_paths"]
+    if alternatives: all_paths = [DBoH] + alternatives
+    else: all_paths = [DBoH]
+
+    all_paths = check_path(all_paths)
+
+    return all_paths
+
+
+def load_tags():
+    '''
+    Loads the metadata tags
+    '''
+    tags = import_setting("Tags.yaml")
+    return tags["tags"]
+
+
+def import_setting(setting_file):
+    '''
+    Import a settings file
+    '''
+    with open(path_settings_folder / setting_file, "r") as file:
+        settings = yaml.safe_load(file)
+
+    return settings
 
 
 def sort_models():
@@ -114,14 +183,6 @@ def update_textbox(message):
     return gr.Textbox(placeholder = message)
 
 
-def update_state_list(states, state):
-    '''
-    Updates a state list with a new stat added.
-    '''
-    if state and state not in tuple(states):
-        states.append(state)
-        states.sort()
-    return states
 
 
 def user_submit(user_msg, chat_history, *args, **kwargs):
