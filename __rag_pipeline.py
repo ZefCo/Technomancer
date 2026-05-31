@@ -1,7 +1,7 @@
 import chromadb
 # LangChain - Chroma is throwing out several error warnings. Not sure why. Basically something is already imported and it keeps trying to import it so it ignores it?
 from langchain_chroma import Chroma
-from langchain_community.document_loaders import PDFPlumberLoader, TextLoader, UnstructuredCSVLoader
+from langchain_community.document_loaders import PDFPlumberLoader, TextLoader, UnstructuredCSVLoader, UnstructuredEPubLoader
 # from langchain_community.embeddings import OllamaEmbeddings
 from langchain_ollama import OllamaEmbeddings  # this should hopefully get rid of that warning about depreciation
 # from langchain_community.chat_models import ChatOllama
@@ -148,6 +148,8 @@ def load_documents(file, collection, chunk_size, chunk_overlap, *args, **kwargs)
         DocLoader = TextLoader
     elif file.suffix == ".csv":
         DocLoader = UnstructuredCSVLoader  # this one might need some more testing, as csv files have headers and those might need to be read in properly.
+    elif file.suffix == ".epub":
+        DocLoader = UnstructuredEPubLoader
     
     print(f"#####\nIngesting {file} into {collection}\nChunk Size = {chunk_size}\nOverlap = {chunk_overlap}\n#####")
     
@@ -292,7 +294,7 @@ def _gradio_history_to_langchain(history: list):
 
     return messages
 
-def query_rag(message: str, history: list, collection: str, system_content: str, model: str):
+def query_rag(message: str, history: list, collection: str, model: str, system_content: str = ""):
     '''
     Streaming RAG query. Yields response chunks.
     Uses a single prompt that retrieves context but instructs the LLM

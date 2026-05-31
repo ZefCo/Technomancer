@@ -33,7 +33,7 @@ def sort_models():
 
 
 
-def generate_response(message, history, system_content, model,
+def generate_response(message, history, model, system_content = "", 
                       collection = None, use_rag = False,
                       *args, **kwargs):
     '''
@@ -42,9 +42,10 @@ def generate_response(message, history, system_content, model,
     if use_rag and collection:
         pass
         from __rag_pipeline import query_rag
-        yield from query_rag(message, history, collection, system_content, model)
+        yield from query_rag(message, history, collection, model, system_content = system_content) # type: ignore
     else:
-        messages = [{"role": "system", "content": system_content}]
+        if system_content: messages = [{"role": "system", "content": system_content}]
+        else: messages = []
 
         for item in history:
             messages.append({"role": item["role"], "content": item["content"]})  # appends the information into the message with the proper format
@@ -61,13 +62,20 @@ def generate_response(message, history, system_content, model,
 
 
 
+def stop_command():
+    '''
+    Halts the chat.
+    '''
+    return False
+
+
 def technomancer_response(chat_history, system_content, model, *args, **kwargs):
     '''
     This yields the chatbots response. Again, *args and **kwargs are not really needed, but are here *in case*
     '''
     user_msg = chat_history[-2]["content"]  # grab the content of the users message
 
-    for response in generate_response(user_msg, chat_history[:-2], system_content, model, *args, **kwargs):
+    for response in generate_response(user_msg, chat_history[:-2], model, system_content, *args, **kwargs):
         chat_history[-1]["content"] = response  # now the last item is the assistant placeholder
         yield chat_history
 
