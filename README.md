@@ -10,19 +10,15 @@ REQUIREMENTS
 
 A list of requirements are in the requirements.txt file.
 
-Ollama - uses Phi4, though other models can be used
-    currently uses phi4 and qwen3 for language and embedding. This is hard coded, though there are plans to make this more adaptable.
-Gradio - for the UI
-    It runs as a local server on a device, which means any web capable device can interact with it at {that devices ip}:7860.
-    It is not currently meant to go online as copyrighted material could be in it. For initial testing and deployment it will be populated with free RPG material, but even then the database (due to its size) will probably not be uploaded.
-    Currently this does not support any login or chat saving, but both of those are planned for the future. At least locally.
-LangChain
-    Also need langchain-ollama, langchain-community, pdfplumber, langchain-chroma, sentence-transformers, transformers (two different things)
-    This allows Ollama and ChromaDB to interact.
+Ollama: can use any local model that the user has installed.
+
+Gradio: It runs as a local server on a device, which means any web capable device can interact with it at {that devices ip}:7860. It is not currently meant to go online as copyrighted material could be in it. For initial testing and deployment it will be populated with free RPG material, but even then the database (due to its size) will probably not be uploaded. Currently this does not support any login or chat saving, but both of those are planned for the future. At least locally.
+
+LangChain: Also need langchain-ollama, langchain-community, pdfplumber, langchain-chroma, sentence-transformers, transformers (two different things)
+
 ChromaDB
-    For holding the database.
+    
 FastAPI (not implemented yet)
-transformers
 
 USE
 
