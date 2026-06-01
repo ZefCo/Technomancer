@@ -1,4 +1,7 @@
 import gradio as gr
+import logging
+logger = logging.getLogger(__name__)
+
 
 with gr.Blocks() as about:
     title = gr.Markdown("# About")

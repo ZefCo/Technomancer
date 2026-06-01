@@ -1,11 +1,17 @@
+import logging
+logger = logging.getLogger(__name__)
+
 import gradio as gr
-from __tech_fn import user_submit, technomancer_response, update_system_prompt, update_drop_down, update_textbox
+
 from __rag_pipeline import find_documents
 
+from __tech_fn import user_submit, technomancer_response, update_system_prompt, update_drop_down, update_textbox
 
 
 
-def create_chat(models, rule_systems, system_content, embeddings):
+
+def create_chat(models, rule_systems, embeddings):
+# def create_chat(models, rule_systems, system_content, embeddings):
     '''
     '''
     documents_listed = gr.State([])
@@ -69,7 +75,8 @@ def create_chat(models, rule_systems, system_content, embeddings):
 
         # clear_sys_prompt.click(update_system_prompt, [no_sys_prompt, system_content], [system_content, active_prompt_display, change_sys_prompt]).then(update_textbox, [system_content], [change_sys_prompt])
 
-        chat_response = msg.submit(user_submit, [msg, chatbot], [msg, chatbot], queue = False).then(technomancer_response, [chatbot, system_content, model_choice, embedding_choice, collection_choice, use_rag_toggle], chatbot)
+        # chat_response = msg.submit(user_submit, [msg, chatbot], [msg, chatbot], queue = False).then(technomancer_response, [chatbot, system_content, model_choice, embedding_choice, collection_choice, use_rag_toggle], chatbot)
+        chat_response = msg.submit(user_submit, [msg, chatbot], [msg, chatbot], queue = False).then(technomancer_response, [chatbot, model_choice, embedding_choice, collection_choice, use_rag_toggle], chatbot)
         
         # change_sys_prompt.submit(update_system_prompt, [change_sys_prompt, system_content], [system_content, active_prompt_display, change_sys_prompt]).then(update_textbox, [system_content], [change_sys_prompt])
         
@@ -80,7 +87,7 @@ def create_chat(models, rule_systems, system_content, embeddings):
         # chat.load(fn = update_textbox, inputs = [system_content], outputs = [change_sys_prompt]).then(fn = update_drop_down, inputs = [models], outputs = [model_choice]).then(fn = update_drop_down, inputs = [rule_systems], outputs = [collection_choice])
         # chat.load(fn = update_drop_down, inputs = [models], outputs = [model_choice]).then(fn = update_drop_down, inputs = [rule_systems], outputs = [collection_choice]).then(fn = update_drop_down, inputs = [embeddings], outputs = [embedding_choice])
 
-    return chat, {"model_choice": model_choice, "collection_choice": collection_choice, "embedding_choice": embedding_choice}
+    return chat, {"model_choice": model_choice, "collection_choice": collection_choice, "embedding_choice": embedding_choice, "chatbot": chatbot}
 
 print("Rendered Chat Page")
 

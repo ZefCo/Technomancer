@@ -1,13 +1,30 @@
-# for functions
-import subprocess
-import ollama
-import gradio as gr
-import re
-import pathlib
-import yaml
-cwd = pathlib.Path.cwd()
-path_settings_folder = cwd / "Settings"
+import logging
+logger = logging.getLogger(__name__)
 
+import gradio as gr
+
+import ollama
+
+import pathlib
+
+import re
+
+import subprocess
+
+import yaml
+
+cwd = pathlib.Path.cwd()
+
+
+
+def chatbot_avatars(user, bot):
+    '''
+    Gives the user and the chatbot an avatar
+    '''
+    if user: user = str(cwd / "Images" / user)
+    if bot: bot = str(cwd / "Images" / bot)
+
+    return gr.Chatbot(avatar_images = [user, bot])
 
 
 def append_state_list(states, state):
@@ -79,7 +96,7 @@ def import_setting(setting_file):
     '''
     Import a settings file
     '''
-    with open(path_settings_folder / setting_file, "r") as file:
+    with open(cwd / "Settings" / setting_file, "r") as file:
         settings = yaml.safe_load(file)
 
     return settings
@@ -116,7 +133,8 @@ def _extract_content(content) -> str:
     return str(content)
 
 
-def generate_response(message, history, model, embeddings, system_content = "", 
+def generate_response(message, history, model, embeddings, 
+# def generate_response(message, history, model, embeddings, system_content = "", 
                       collection = None, use_rag = False,
                       *args, **kwargs):
     '''
@@ -126,7 +144,8 @@ def generate_response(message, history, model, embeddings, system_content = "",
         from __rag_pipeline import query_rag
         yield from query_rag(message, history, collection, model, embeddings, system_content = system_content) # type: ignore
     else:
-        messages = [{"role": "system", "content": _extract_content(system_content)}]
+        # messages = [{"role": "system", "content": _extract_content(system_content)}]
+        messages = []
         # if system_content: messages = [{"role": "system", "content": system_content}]
         # else: messages = []
 
@@ -153,7 +172,8 @@ def stop_command():
     return False
 
 
-def technomancer_response(chat_history, system_content, model, embedding, *args, **kwargs):
+def technomancer_response(chat_history, model, embedding, *args, **kwargs):
+# def technomancer_response(chat_history, system_content, model, embedding, *args, **kwargs):
     '''
     This yields the chatbots response. Again, *args and **kwargs are not really needed, but are here *in case*
     '''
@@ -161,7 +181,8 @@ def technomancer_response(chat_history, system_content, model, embedding, *args,
     user_msg = _extract_content(raw_user_msg)
     chat_history[-2]["content"] = user_msg
 
-    for response in generate_response(user_msg, chat_history[:-2], model, embedding, system_content, *args, **kwargs):
+    # for response in generate_response(user_msg, chat_history[:-2], model, embedding, system_content, *args, **kwargs):
+    for response in generate_response(user_msg, chat_history[:-2], model, embedding, *args, **kwargs):
         chat_history[-1]["content"] = response  # now the last item is the assistant placeholder
         yield chat_history
 

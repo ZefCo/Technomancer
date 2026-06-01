@@ -30,3 +30,6 @@ UI_Testing/__pycache__
 
 # For testing and making interesting model personalities.
 /Personalities
+
+# Because we don't want to upload the logs
+/Logs

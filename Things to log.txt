@@ -1,0 +1,40 @@
+Startup
+    which models were found at start up
+        language vs embedding
+    server address and port at launch
+
+Shutdown
+
+RAG pipline
+    number of collections found
+    number of chunks created when ingesting a document
+    number of new vs duplicate chunks when loading a ChromaDB
+    query returns 0 results
+    how many query retulst are returned
+    embedding model load times
+
+LLM interactions
+    which model was used for a response
+    wheater RAG was used or direct path
+        Query routing?
+    reponse time per query
+
+Document Mangagement
+    when a document is added to a collection
+    when a collection is create
+    when a colletion is found emtpy
+    when a file was rejected because it was unsupported
+
+Gradio
+    system state changes
+        log old vs new values
+    Model switches mid conversation
+        (same as above?)
+
+Critical errors to catch
+    ChromaDB conncetion errors 
+    Ollama not running
+    Ollama model not found
+    File ingestion failures
+        get file name
+    Any exception in teh streaming reponse loop

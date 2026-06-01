@@ -1,6 +1,12 @@
+import logging
+logger = logging.getLogger(__name__)
+
 import gradio as gr
+
 from __rag_pipeline import load_documents, find_documents, delete_document, create_collection
+
 from __tech_fn import update_drop_down, append_state_list, update_textbox, update_chunks, change_state_list
+
 
 
 def create_upload(dboh_paths, models, rule_systems, tags):

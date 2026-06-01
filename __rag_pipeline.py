@@ -1,26 +1,30 @@
+import logging
+logger = logging.getLogger(__name__)
+
 import chromadb
+
 from functools import lru_cache
-# LangChain - Chroma is throwing out several error warnings. Not sure why. Basically something is already imported and it keeps trying to import it so it ignores it?
+
 from langchain_chroma import Chroma
+
 from langchain_community.document_loaders import PDFPlumberLoader, TextLoader, UnstructuredCSVLoader, UnstructuredEPubLoader
-# from langchain_community.embeddings import OllamaEmbeddings
+
 from langchain_ollama import OllamaEmbeddings  # this should hopefully get rid of that warning about depreciation
-# from langchain_community.chat_models import ChatOllama
 from langchain_ollama import ChatOllama
+
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableBranch, RunnableLambda, RunnablePassthrough
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-# import os
 
-# import pandas
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
 import pathlib
+
 cwd = pathlib.Path.cwd()
 chroma_database_dir = cwd / "DB_of_Holding"
 
 _chroma_client = None
-
 
  # --------------------------------- Other --------------------------------- #
 # -------------------------- Waiting to be sorted -----=--------------------- #
