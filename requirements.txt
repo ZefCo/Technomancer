@@ -3,7 +3,7 @@ Anaconda is the recomended way to install these. Below are their pip commands or
 chromadb
     anaconda
     pip install chromadb
-gradio
+gradio  - version 6 or later. 5 will not work due to how the messages get passed and read from the user to the LLM.
     anaconda
     pip install gradio
 langchain
