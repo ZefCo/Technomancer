@@ -3,7 +3,7 @@ import pathlib
 from __rag_pipeline import find_collections, find_documents
 import __tech_about as tech_about
 from __tech_chat import create_chat
-from __tech_fn import sort_models, load_paths, load_tags
+from __tech_fn import sort_models, load_paths, load_tags, update_drop_down, update_system_prompt, update_textbox, update_chunks
 from __tech_upload import create_upload
 
 cwd = pathlib.Path.cwd()
@@ -29,12 +29,17 @@ with gr.Blocks(title = "Technomancer v0.5") as Technomancer:
         with gr.Tab(label = "About/Manual"):
             tech_about.about.render()
          
-        with gr.Tab(label = "Technomancer Chat"):
+        with gr.Tab(label = "Technomancer Chat") as chat_tab:
             # tech_chat.chat.render()
-            TECH_CHAT = create_chat(lang_models, rule_systems, system_content)
+            TECH_CHAT, chat_components = create_chat(lang_models, rule_systems, system_content, embed_models)
 
-        with gr.Tab(label = "Database of Holding"):
-            TECH_UPLOAD = create_upload(db_paths, embed_models, rule_systems, tags)
+        with gr.Tab(label = "Database of Holding") as upload_tab:
+            TECH_UPLOAD, upload_components = create_upload(db_paths, embed_models, rule_systems, tags)
+
+    # upload_tab.select(fn = update_drop_down, inputs = [], outputs = [])
+    upload_tab.select(fn = update_drop_down, inputs = [rule_systems], outputs = [upload_components["available_collections"]]).then(update_drop_down, [rule_systems], [upload_components["rule_system"]]).then(fn = update_drop_down, inputs = [embed_models], outputs = [upload_components["eb_model"]]).then(fn = update_drop_down, inputs = [db_paths], outputs = [upload_components["list_of_db"]])
+    chat_tab.select(fn = update_drop_down, inputs = [lang_models], outputs = [chat_components["model_choice"]]).then(fn = update_drop_down, inputs = [rule_systems], outputs = [chat_components["collection_choice"]]).then(fn = update_drop_down, inputs = [embed_models], outputs = [chat_components["embedding_choice"]])
+    
 
 
 if __name__ in "__main__":

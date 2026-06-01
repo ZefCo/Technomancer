@@ -61,3 +61,7 @@ Test epub ingestion,rag,5/30/26,
 Add metadata tags for documents,rag,5/29/26, 
 Add metadata to documents after ingestion,rag,5/30/26, 
 Change yaml to env files,git,5/30/26,
+Add advanced features to upload tab,ui,5/31/26,5/31/26
+Make paths to additional databases optional,rag,5/31/26,5/31/26
+Link embedding model choice and database choice with yaml file and state variables,rag,5/31/26,
+Go through variables and declare them consistently throughout all pages,git,5/31/26,

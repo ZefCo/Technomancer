@@ -100,24 +100,39 @@ def sort_models():
     return language, embedding
 
 
+def _extract_content(content) -> str:
+    '''
+    Gradio 6 changed message content to potentially be a list of content blocks.
+    This normalizes it back to a plain string regardless of which format arrives.
+    '''
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        # extract text from each block and join
+        return " ".join(
+            block.get("text", "") if isinstance(block, dict) else str(block)
+            for block in content
+        )
+    return str(content)
 
 
-def generate_response(message, history, model, system_content = "", 
+def generate_response(message, history, model, embeddings, system_content = "", 
                       collection = None, use_rag = False,
                       *args, **kwargs):
     '''
     This will route between RAG and the Ollama chat depending on the if a collection is used or not, which hopefully is triggered properly in the context of the message.
     '''
     if use_rag and collection:
-        pass
         from __rag_pipeline import query_rag
-        yield from query_rag(message, history, collection, model, system_content = system_content) # type: ignore
+        yield from query_rag(message, history, collection, model, embeddings, system_content = system_content) # type: ignore
     else:
-        if system_content: messages = [{"role": "system", "content": system_content}]
-        else: messages = []
+        messages = [{"role": "system", "content": _extract_content(system_content)}]
+        # if system_content: messages = [{"role": "system", "content": system_content}]
+        # else: messages = []
 
         for item in history:
-            messages.append({"role": item["role"], "content": item["content"]})  # appends the information into the message with the proper format
+            content = _extract_content(item["content"])
+            if content: messages.append({"role": item["role"], "content": content})  # appends the information into the message with the proper format
 
         messages.append({"role": "user", "content": message})
 
@@ -138,13 +153,15 @@ def stop_command():
     return False
 
 
-def technomancer_response(chat_history, system_content, model, *args, **kwargs):
+def technomancer_response(chat_history, system_content, model, embedding, *args, **kwargs):
     '''
     This yields the chatbots response. Again, *args and **kwargs are not really needed, but are here *in case*
     '''
-    user_msg = chat_history[-2]["content"]  # grab the content of the users message
+    raw_user_msg = chat_history[-2]["content"]  # grab the content of the users message
+    user_msg = _extract_content(raw_user_msg)
+    chat_history[-2]["content"] = user_msg
 
-    for response in generate_response(user_msg, chat_history[:-2], model, system_content, *args, **kwargs):
+    for response in generate_response(user_msg, chat_history[:-2], model, embedding, system_content, *args, **kwargs):
         chat_history[-1]["content"] = response  # now the last item is the assistant placeholder
         yield chat_history
 
@@ -186,10 +203,7 @@ def update_textbox(message):
 
 
 def user_submit(user_msg, chat_history, *args, **kwargs):
-    '''
-    This formats the user input to the proper message type.
-    *args and **kwargs are not really used here, just there *in case*
-    '''
+    user_msg = _extract_content(user_msg)  # normalize incoming content
     chat_history.append({"role": "user", "content": user_msg})
     chat_history.append({"role": "assistant", "content": ""})
     return "", chat_history

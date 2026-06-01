@@ -1,0 +1,2 @@
+# This is meant to link the embedding model with the file path to a database. It uses the embedding model as the key and has a list of file paths that were used for that embedding model.
+# It will be empty until something is saved.
