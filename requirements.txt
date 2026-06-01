@@ -1,10 +1,29 @@
-gradio
-ollama
-langchain
-langchain-community
-langchain-chroma
-langchain-core
-langchain-text-splitters
-pdfplumber
+Anaconda is the recomended way to install these. Below are their pip commands or if they are avaliable in Anaconda.
+
 chromadb
-yaml
+    anaconda
+    pip install chromadb
+gradio
+    anaconda
+    pip install gradio
+langchain
+    anaconda
+    pip install langchain
+langchain-community
+    anaconda
+    pip install langchain-community
+langchain-chroma
+    pip install langchain-chroma
+langchain-core
+    pip install langchain-core
+langchain-text-splitters
+    pip install langchain-text-splitters
+langchain-ollama
+    pip install langchain-ollama
+ollama
+    https://ollama.com/download (for Ollama server)
+        Don't foreget to install a language model: https://ollama.com/library
+        Don't forget to install an embedding model: https://ollama.com/search?c=embedding
+    pip install ollama (for python library)
+pdfplumber
+    pip install pdfplumber
