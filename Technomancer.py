@@ -5,7 +5,7 @@ cwd = pathlib.Path.cwd()
 
 def setup_logs():
     '''
-    Makes sure the logs are setup and ready to go
+    Makes sure the logs are setup and ready to go. This should be running before the other scripts are accessed.
     '''
     log_dir = cwd / "Logs"
     log_dir.mkdir(exist_ok = True)
@@ -16,13 +16,18 @@ def setup_logs():
     logging.basicConfig(level = logging.INFO, 
                         format = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s", 
                         handlers = [logging.FileHandler(log_file)])
+    
+def check_ollama():
+    '''
+    Checks if Ollama is running the in the background. Since this can be on a windows or a mac or a linux machine, it will be os dependent.
+    https://tabbydata.com/how-to-check-if-ollama-server-is-running/
+    '''
+    # import os
 
 setup_logs()
 logger = logging.getLogger(__name__)
 
-
 import gradio as gr
-
 
 from __rag_pipeline import find_collections, find_documents
 
@@ -48,8 +53,8 @@ with gr.Blocks(title = "Technomancer v0.5") as Technomancer:
     lang_models = gr.State(value = LANG_MODELS)
     embed_models = gr.State(value = EMBED_MODELS)
     tags = gr.State(value = TAGS)
-    user_tar = gr.State(value = IMAGES["user"])
-    bot_tar = gr.State(value = IMAGES["bot"])
+    user_avatar = gr.State(value = IMAGES["user"])
+    bot_avatar = gr.State(value = IMAGES["bot"])
 
     # because of how many state variables I'm juggeling, I'm going to keep them alphabitized.
     with gr.Tabs():
@@ -58,15 +63,15 @@ with gr.Blocks(title = "Technomancer v0.5") as Technomancer:
          
         with gr.Tab(label = "Technomancer Chat") as chat_tab:
             # TECH_CHAT, chat_components = create_chat(lang_models, rule_systems, system_content, embed_models)
-            TECH_CHAT, chat_components = create_chat(lang_models, rule_systems, embed_models)
+            TECH_CHAT, chat_components = create_chat(embed_models, lang_models, rule_systems)
 
 
         with gr.Tab(label = "Database of Holding") as upload_tab:
             TECH_UPLOAD, upload_components = create_upload(db_paths, embed_models, rule_systems, tags)
 
     # upload_tab.select(fn = update_drop_down, inputs = [], outputs = [])
-    upload_tab.select(fn = update_drop_down, inputs = [rule_systems], outputs = [upload_components["available_collections"]]).then(update_drop_down, [rule_systems], [upload_components["rule_system"]]).then(fn = update_drop_down, inputs = [embed_models], outputs = [upload_components["eb_model"]]).then(fn = update_drop_down, inputs = [db_paths], outputs = [upload_components["list_of_db"]])
-    chat_tab.select(fn = update_drop_down, inputs = [lang_models], outputs = [chat_components["model_choice"]]).then(fn = update_drop_down, inputs = [rule_systems], outputs = [chat_components["collection_choice"]]).then(fn = update_drop_down, inputs = [embed_models], outputs = [chat_components["embedding_choice"]]).then(fn = chatbot_avatars, inputs = [user_tar, bot_tar], outputs = [chat_components["chatbot"]])
+    upload_tab.select(fn = update_drop_down, inputs = [rule_systems], outputs = [upload_components["available_collections"]]).then(fn = update_drop_down, inputs = [rule_systems], outputs = [upload_components["rule_system"]]).then(fn = update_drop_down, inputs = [embed_models], outputs = [upload_components["eb_model"]]).then(fn = update_drop_down, inputs = [db_paths], outputs = [upload_components["list_of_db"]])
+    chat_tab.select(fn = update_drop_down, inputs = [lang_models], outputs = [chat_components["model_choice"]]).then(fn = update_drop_down, inputs = [rule_systems], outputs = [chat_components["collection_choice"]]).then(fn = update_drop_down, inputs = [embed_models], outputs = [chat_components["embedding_choice"]]).then(fn = chatbot_avatars, inputs = [user_avatar, bot_avatar], outputs = [chat_components["chatbot"]])
 
 
 

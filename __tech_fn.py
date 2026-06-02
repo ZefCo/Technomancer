@@ -17,6 +17,21 @@ cwd = pathlib.Path.cwd()
 
 
 
+
+# Add logging here to make sure things are being added properly.
+def append_state_list(states, state):
+    '''
+    Updates a state list with a new stat added.
+    '''
+    if state and state not in tuple(states):
+        states.append(state)
+    elif not state and state not in tuple(states):
+        states.append("Generic")
+    
+    states.sort()
+    return states
+
+
 def chatbot_avatars(user, bot):
     '''
     Gives the user and the chatbot an avatar
@@ -27,16 +42,7 @@ def chatbot_avatars(user, bot):
     return gr.Chatbot(avatar_images = [user, bot])
 
 
-def append_state_list(states, state):
-    '''
-    Updates a state list with a new stat added.
-    '''
-    if state and state not in tuple(states):
-        states.append(state)
-        states.sort()
-    return states
-
-
+# Adding logging here to make sure old state is being changed to new state.
 def change_state_list(state_list):
     '''
     Changes a state list to another state.
@@ -44,10 +50,11 @@ def change_state_list(state_list):
     return state_list
 
 
-def check_path(paths):
+def check_path(paths: list):
     '''
     Checks to make sure the path is a valid path and exists. Transforms it to a string and returns the list.
     '''
+    # add logging to this. It writes to the logs which paths were input and which ones were written
     path: pathlib.Path
     return_paths = list()
     for path in paths:
@@ -57,21 +64,77 @@ def check_path(paths):
     return return_paths
 
 
+def _extract_content(content) -> str:
+    '''
+    Gradio 6 changed message content to potentially be a list of content blocks.
+    This normalizes it back to a plain string regardless of which format arrives.
+    '''
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        # extract text from each block and join
+        return " ".join(
+            block.get("text", "") if isinstance(block, dict) else str(block)
+            for block in content
+        )
+    return str(content)
+
 
 def find_models():
     '''
     Finds all the models that are installed on the computer. Meant to be run when the server starts.
     '''
-    result = subprocess.run(['ollama', 'list'], capture_output=True, text=True)
+    # Add logging to this, return which lists were found
+    result = subprocess.run(['ollama', 'list'], capture_output = True, text = True)
     lines = result.stdout.strip().splitlines()[1:]  # Skip header line
     models = [line.split()[0] for line in lines]  # Get model names from the first column
     return models
+
+
+# Logging should be here, but not sure how. Esepcially since this is related to the query routing.
+def generate_response(message, history, lang_model, embed_model, 
+                      collection = None, use_rag = False,
+                      *args, **kwargs):
+    '''
+    This will route between RAG and the Ollama chat depending on the if a collection is used or not, which hopefully is triggered properly in the context of the message.
+    '''
+    if use_rag and collection:
+        from __rag_pipeline import query_rag
+        yield from query_rag(message, history, collection, lang_model, embed_model) # type: ignore
+    else:
+        messages = []
+
+        for item in history:
+            content = _extract_content(item["content"])
+            if content: messages.append({"role": item["role"], "content": content})  # appends the information into the message with the proper format
+
+        messages.append({"role": "user", "content": message})
+
+        completion = ollama.chat(model = lang_model, messages = messages, stream = True)
+
+        response = ""
+        for chunk in completion:
+            if "message" in chunk and "content" in chunk["message"]:
+                response += chunk["message"]["content"]
+                yield response
+
+
+def import_setting(setting_file):
+    '''
+    Import a settings file
+    '''
+    # Add to log when this is called and used.
+    with open(cwd / "Settings" / setting_file, "r") as file:
+        settings = yaml.safe_load(file)
+
+    return settings
 
 
 def load_paths():
     '''
     Loads all the Database paths the user has saved in the settings file.
     '''
+    # Add logging here to find which places are added.
     paths = import_setting("DB_Paths.yaml")
 
     DBoH = cwd / paths["default_path"]
@@ -92,20 +155,11 @@ def load_tags():
     return tags["tags"]
 
 
-def import_setting(setting_file):
-    '''
-    Import a settings file
-    '''
-    with open(cwd / "Settings" / setting_file, "r") as file:
-        settings = yaml.safe_load(file)
-
-    return settings
-
-
 def sort_models():
     '''
-    Sorts them between embedding and language models. Assumes - and this might be a dangerous assumption - that embedding models contain the word embedding
+    Sorts them between embedding and language models. Assumes - and this might be a dangerous assumption - that embedding models contain the word embedding.
     '''
+    # Add logging here to see which models were sorted to where.
     language: list = []
     embedding: list = []
     models = find_models()
@@ -117,54 +171,6 @@ def sort_models():
     return language, embedding
 
 
-def _extract_content(content) -> str:
-    '''
-    Gradio 6 changed message content to potentially be a list of content blocks.
-    This normalizes it back to a plain string regardless of which format arrives.
-    '''
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        # extract text from each block and join
-        return " ".join(
-            block.get("text", "") if isinstance(block, dict) else str(block)
-            for block in content
-        )
-    return str(content)
-
-
-def generate_response(message, history, model, embeddings, 
-# def generate_response(message, history, model, embeddings, system_content = "", 
-                      collection = None, use_rag = False,
-                      *args, **kwargs):
-    '''
-    This will route between RAG and the Ollama chat depending on the if a collection is used or not, which hopefully is triggered properly in the context of the message.
-    '''
-    if use_rag and collection:
-        from __rag_pipeline import query_rag
-        yield from query_rag(message, history, collection, model, embeddings, system_content = system_content) # type: ignore
-    else:
-        # messages = [{"role": "system", "content": _extract_content(system_content)}]
-        messages = []
-        # if system_content: messages = [{"role": "system", "content": system_content}]
-        # else: messages = []
-
-        for item in history:
-            content = _extract_content(item["content"])
-            if content: messages.append({"role": item["role"], "content": content})  # appends the information into the message with the proper format
-
-        messages.append({"role": "user", "content": message})
-
-        completion = ollama.chat(model = model, messages = messages, stream = True)
-
-        response = ""
-        for chunk in completion:
-            if "message" in chunk and "content" in chunk["message"]:
-                response += chunk["message"]["content"]
-                yield response
-
-
-
 def stop_command():
     '''
     Halts the chat.
@@ -172,8 +178,8 @@ def stop_command():
     return False
 
 
-def technomancer_response(chat_history, model, embedding, *args, **kwargs):
-# def technomancer_response(chat_history, system_content, model, embedding, *args, **kwargs):
+# Add logging here, reporting the model and embedding used.
+def technomancer_response(chat_history, lang_model, embed_model, *args, **kwargs):
     '''
     This yields the chatbots response. Again, *args and **kwargs are not really needed, but are here *in case*
     '''
@@ -181,18 +187,17 @@ def technomancer_response(chat_history, model, embedding, *args, **kwargs):
     user_msg = _extract_content(raw_user_msg)
     chat_history[-2]["content"] = user_msg
 
-    # for response in generate_response(user_msg, chat_history[:-2], model, embedding, system_content, *args, **kwargs):
-    for response in generate_response(user_msg, chat_history[:-2], model, embedding, *args, **kwargs):
+    for response in generate_response(user_msg, chat_history[:-2], lang_model, embed_model, *args, **kwargs):
         chat_history[-1]["content"] = response  # now the last item is the assistant placeholder
         yield chat_history
 
 
 
-def update_chunks(size, overlap):
+def update_chunk(chunk):
     '''
     Will update both chunks and overlap as the slider is adjusted.
     '''
-    return size, overlap
+    return chunk
 
 
 def update_drop_down(choices):
@@ -202,6 +207,12 @@ def update_drop_down(choices):
     if choices: return gr.Dropdown(choices = choices, value = choices[0] if choices[0] else None)
     else: return gr.Dropdown(choices = [])
 
+
+def update_slider(value):
+    '''
+    Updates the slider value
+    '''
+    return gr.Slider(value = value)
 
 
 def update_system_prompt(new_prompt, current):
@@ -219,8 +230,6 @@ def update_textbox(message):
     Updates the textbox.
     '''
     return gr.Textbox(placeholder = message)
-
-
 
 
 def user_submit(user_msg, chat_history, *args, **kwargs):
