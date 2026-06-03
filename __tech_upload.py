@@ -3,11 +3,6 @@ import pathlib
 from os.path import basename
 from __log_fn import setup_logs
 import logging
-logger = logging.getLogger(__name__)
-setup_logs(pathlib.Path(basename(__file__)).stem)
-
-start = datetime.now()
-logger.info(f"Started loading Chat Tab script | Start {start.strftime("%H:%M:%S")}")
 
 import gradio as gr
 
@@ -113,8 +108,5 @@ def create_upload(db_paths, embed_models, rule_systems, tags):
 
 if __name__ in "__main__":
     TECH_UPLOAD, upload_components = create_upload(["DB Path"], ["Embedding Choice"], ["AD&D", "Shadowrun", "Rifts"], ["Tag 1", "Tag 2", "Tag 3"])
-else:
-    end = datetime.now()
-    delta = end - start
-    logger.info(f"Finished loading Upload Tab script | End {end.strftime("%H:%M:%S")} | Total load time: {delta.microseconds} microseconds (10**-6 s)")
-    print("Rendered Upload Tab")
+    logger = logging.getLogger(__name__)
+    setup_logs(pathlib.Path(basename(__file__)).stem)
