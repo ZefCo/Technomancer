@@ -1,6 +1,6 @@
 6/3/26
--Work on query routing
--Work on logging of query routing.
+-Work on logging of RAG.
+-Test various upload documents
 6/2/26
 -Finish logging system to at least 50% - Done. Foundation set, can be updated as more things are added.
 6/1/26

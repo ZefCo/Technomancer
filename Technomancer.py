@@ -1,7 +1,20 @@
 import pathlib
 from os.path import basename
 from __log_fn import setup_logs
+from datetime import datetime
 import logging
+
+cwd = pathlib.Path.cwd()
+timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    
+log_dir = cwd / "Logs"
+log_dir.mkdir(parents = True, exist_ok = True)
+    
+# logger = logging.getLogger(__name__)
+    
+logger = setup_logs(log_dir / f"Technomancer__{timestamp}.log")
+# logger_debug = setup_logs(log_dir / f"Technomancer_DEBUG_{timestamp}.log")
+
 
 import gradio as gr
 
@@ -21,7 +34,6 @@ def launch_technomancer():
     DBOH = load_paths()
     TAGS = load_tags()
     IMAGES = import_setting(cwd / "Settings" / "AvatarImages.yaml")
-
 
 
     with gr.Blocks(title = "Technomancer v0.5") as Technomancer:
@@ -65,7 +77,5 @@ def launch_technomancer():
 
 
 if __name__ in "__main__":
-    logger = logging.getLogger(__name__)
-    setup_logs(pathlib.Path(basename(__file__)).stem)
     Technomancer = launch_technomancer()
     Technomancer.launch(server_name = "0.0.0.0", server_port = 7860)

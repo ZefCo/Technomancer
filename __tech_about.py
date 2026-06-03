@@ -1,6 +1,6 @@
 # logger = logging.getLogger(__name__)  # there might not be a whole lot to log on this tab.
 import gradio as gr
-import logging
+# import logging
 
 
 with gr.Blocks() as about:

@@ -1,8 +1,10 @@
-from datetime import datetime
-import pathlib
+# from datetime import datetime
+# import pathlib
+
+import logging
+
 from os.path import basename
 from __log_fn import setup_logs
-import logging
 
 import gradio as gr
 
@@ -10,7 +12,7 @@ from __rag_pipeline import find_documents
 
 from __tech_fn import change_state, technomancer_response, update_system_prompt, update_drop_down, update_textbox, user_submit
 
-
+logger = logging.getLogger(__name__)
 
 
 def create_chat(embed_models, lang_models, rule_systems):
@@ -76,7 +78,24 @@ def create_chat(embed_models, lang_models, rule_systems):
 
 
 
+# if __name__ in "__main__":
+#     setup_logs(pathlib.Path(basename(__file__)).stem)
+
+
 if __name__ in "__main__":
+    from datetime import datetime
+    import pathlib
+
+    cwd = pathlib.Path.cwd()
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")    
+
+    log_dir = cwd / "Logs"
+    log_dir.mkdir(parents = True, exist_ok = True)
+    
+    logger = setup_logs(__name__, log_dir / f"{pathlib.Path(basename(__file__)).stem}_{timestamp}.log")
+
     TECH_CHAT, _ = create_chat(["Embedding Choice"], ["Language Choice"], ["AD&D", "Shadowrun", "Rifts"])
+else:
     logger = logging.getLogger(__name__)
-    setup_logs(pathlib.Path(basename(__file__)).stem)
+    print("Rendered Chat Tab")
+    logger.info("Rendered Chat Tab")

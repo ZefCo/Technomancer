@@ -24,11 +24,9 @@ NPC generator,api,5/20/26,
 Name Generator,api,5/20/26,
 Initiative tracker,api,5/20/26,
 Be able to modify text files after upload,rag,5/21/26,
-Find ways to preserve the database between multiple computers,git,5/21/26,
 Find ways to preserve the Modelfiles between multiple computers,git,5/21/26,6/1/26
 Be able to query all collections,rag,5/21/26,5/21/26
 Be able to query specific collections,rag,5/21/26,5/28/26
-Implement query routing,rag,5/29/26,
 Be able to add documents to additional collections,rag,5/21/26,5/27/26
 Organize UI files and chatbot files for final deployment,git,5/22/26,6/2/26
 Have Gradio point to a file,ui,5/26/26,5/27/26
@@ -66,3 +64,4 @@ Go through variables and declare them consistently throughout all pages,git,5/31
 Reject unsuported documents,rag,6/1/26,
 Need to add all inputs/outputs for append stat list function calls - two are wrong,ui,6/2/26,6/2/26
 Have log files route to specific files based on function call,git,6/2/26,
+Update README.md with more complete instructions on how to install,git,6/3/26,

@@ -1,7 +1,11 @@
 import pathlib
+cwd = pathlib.Path.cwd()
 from os.path import basename
-from __log_fn import setup_logs
 import logging
+logger = logging.getLogger(__name__)
+logger.info("Reading Gradio functions file")
+
+
 
 import gradio as gr
 
@@ -13,7 +17,7 @@ import subprocess
 
 import yaml
 
-cwd = pathlib.Path.cwd()
+# logger = logging.getLogger(__name__)
 
 
 
@@ -120,10 +124,16 @@ def find_models():
 
 # Logging should be here, but not sure how. Esepcially since this is related to the query routing.
 def generate_response(message, history, lang_model, embed_model, 
-                      collection = None, use_rag = False,
+                      collection = None, use_rag = True,
                       *args, **kwargs):
     '''
-    This will route between RAG and the Ollama chat depending on the if a collection is used or not, which hopefully is triggered properly in the context of the message.
+    This will route between RAG and the Ollama chat depending on the if a collection is used or not, which hopefully is triggered properly 
+    in the context of the message.
+    
+    Because of scope creep, I'm hard coding this to ALWAYS use RAG. Honeslty, while it would be useful to maybe use query routing one day, 
+    Technomancer doesn't need it. I'm leaving the option of one day comeing back to it, or if someone clones this and decided they want to
+    implement this themselves, they can. But a) I will not try to fix any errors they come across (sorry, if you're reading this, you're on
+    you're own right now), and b) this project doesn't really require or demand it.
     '''
     if use_rag and collection:
         from __rag_pipeline import query_rag
@@ -271,6 +281,9 @@ def user_submit(user_msg, chat_history, *args, **kwargs):
     return "", chat_history
 
 
-if __name__ in "__main__":
-    logger = logging.getLogger(__name__)
-    setup_logs(pathlib.Path(basename(__file__)).stem)
+# if __name__ in "__main__":
+#     setup_logs(pathlib.Path(basename(__file__)).stem)
+
+print("Loaded functions")
+logger.info(f"Finished reading Gradio functions file")
+

@@ -3,6 +3,9 @@ import pathlib
 from os.path import basename
 from __log_fn import setup_logs
 import logging
+logger = logging.getLogger(__name__)
+logger.info(f"Reading RAG Pipeline file")
+
 
 
 import chromadb
@@ -41,11 +44,16 @@ def _clean_collection(collection: str):
 
     ascii_collection = "_".join(str(ord(c)) for c in collection)
 
+    logger.info(f"Convertion Str to ASCII | {collection} | {ascii_collection}")
+
     if len(ascii_collection) < 3:
-        for _ in range(3 - len(ascii_collection)): ascii_collection = ascii_collection + "_{ord(z)}"
+        for _ in range(3 - len(ascii_collection)): ascii_collection = ascii_collection + f"_{ord("z")}"
+        logger.warning(f"Original collection string was too short, extending by z = {ord("z")}")
+
 
     if len(ascii_collection) > 512:
         ascii_collection = ascii_collection[:512]
+        logger.warning(f"Original collection was too long (in ascii), truncating.")
 
     return ascii_collection
 
@@ -56,14 +64,16 @@ def _create_chunks(document, chunk_size, chunk_overlap, *args, **kwargs):
 
     Part of RAG Input
     '''
+    logger.info(f"Ingesting splitting file into chunks | Chunk Size: {chunk_size} | Chunk Overlap: {chunk_overlap}")
     split_text = RecursiveCharacterTextSplitter(chunk_size = chunk_size, chunk_overlap = chunk_overlap)
 
     chunks = split_text.split_documents(document)
-    # update this to see how many chunks were created originally.
 
     if not chunks:
-        # note this in the log
+        logger.warning(f"No chunks were created from the document")
         return None
+    else:
+        logger.info(f"{len(chunks)} were created from document")
     
     return chunks
 
@@ -73,9 +83,15 @@ def create_collection(collection: str):
     '''
     Creates an empty collection if that collection name is not already in use.
     '''
+    logger.info(f"Creating new Collection in Database")
     collection = _clean_collection(collection)
     client = _get_client()
-    _ = client.get_or_create_collection(name = collection)
+    try:
+        _ = client.get_or_create_collection(name = collection)
+    except Exception as e:
+        logger.critical(f"Error creating collection {collection} in database")
+    else:
+        logger.info(f"Successfully created collection in database")
 
 
 def delete_document(collection, metadata):
@@ -89,7 +105,10 @@ def delete_document(collection, metadata):
     collection = _clean_collection(collection)
     local_collection = client.get_collection(str(collection))
     
-    local_collection.delete(where = {"Title": metadata})
+    try:
+        local_collection.delete(where = {"Title": metadata})
+    except Exception as e:
+        logger.critical(f"Error deleting chunks for the document with metadata {metadata}")
 
 
 def find_collections():
@@ -121,10 +140,17 @@ def find_documents(collection):
     local_collection = client.get_collection(str(collection))
     results: dict = local_collection.get() # type: ignore  There's an error here that shouldn't be an error. It works fine.
 
+    items = 0
     for item in results["metadatas"]:
         title = item.get("Title", None)
-        if title: titles.add(title)
-        else: titles.add(pathlib.Path(item["source"]).stem)  # this is in case the title doesn't have a Title.
+        try:
+            if title: titles.add(title)
+            else: titles.add(pathlib.Path(item["source"]).stem)  # this is in case the title doesn't have a Title.
+        except Exception as e:
+            logger.warning(f"Cannont find title or source in item retreived from collection {collection} | Error type {type(e)} | {e}")
+        else:
+            items += 1
+    logger.info(f"Successfully found {items} documents in collection {collection}")
     
     return list(titles)
 
@@ -213,14 +239,14 @@ def _load_document(file_path, DocLoader):
     Part of RAG Input
     '''
     if DocLoader is None:
-        # note this in the log
+        logger.warning(f"Document loader is set to None | file {file_path}")
         return None
 
     loader = DocLoader(file_path)
     document = loader.load()
 
     if not document:
-        # note this in the log
+        logger.warning(f"Loaded document returned None | file {file_path}")
         return None
     
     return document
@@ -233,40 +259,43 @@ def load_documents(file, collection, chunk_size, chunk_overlap, embeddings,
 
     Part of RAG Input
     '''
+    error_msg = ""
     collection = _clean_collection(collection)
     if isinstance(file, str): file = pathlib.Path(file)
     document = None
     chunks = None
     DocLoader = None
 
-    # note all of these in the log
     if file.suffix == ".pdf":
         DocLoader = PDFPlumberLoader
+        logger.info(f"Document Loader function set to PDF")
     elif file.suffix == ".txt":
         DocLoader = TextLoader
+        logger.info(f"Document Loader function set to Text")
     elif file.suffix == ".csv":
         DocLoader = UnstructuredCSVLoader  # this one might need some more testing, as csv files have headers and those might need to be read in properly.
+        logger.info(f"Document Loader function set to Unstructured CSV")
     elif file.suffix == ".epub":
         DocLoader = UnstructuredEPubLoader
+        logger.info(f"Document Loader function set to Unstructured Epub")
     else:
-        pass
-    
-    # Add this to Logger
-    # print(f"#####\nIngesting {file} into {collection}\nChunk Size = {chunk_size}\nOverlap = {chunk_overlap}\n#####")
-        
+        extention = file.suffix
+        logger.warning(f"Unsuported file type | File extension {extention}")
+            
     document = _load_document(file, DocLoader)
 
-    if document is not None:
+    # if document is not None:
+    if document:
         chunks = _create_chunks(document, chunk_size, chunk_overlap)
 
-    if chunks is not None:
-        # move that to the log
-        # print("Loading to Database of Holding")
+    # if chunks is not None:
+    if chunks:
         _load_to_Chroma(chunks, collection, embeddings)
     else:
-        # note this in the log and update something in gradio
-        print("Failed to get anything to load to Database of Holding")
-    print("###Finished###")
+        logger.error(f"The document was not able to be loaded")
+        error_msg = "Failed load document to the database, check logs for possible reasons."
+
+    return error_msg
 
 
 # def _load_pdf(file_path):
@@ -407,9 +436,4 @@ def query_rag(message: str, history: list, collection: str, model: str, embeddin
         yield response
 
 
-# print("Finished loading RAG Pipeline")
-# Log file that it is finished loading
-
-if __name__ in "__main__":
-    logger = logging.getLogger(__name__)
-    setup_logs(pathlib.Path(basename(__file__)).stem)
+logger.info(f"Finished reading RAG Pipeline file")

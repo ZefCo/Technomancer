@@ -1,5 +1,3 @@
-from datetime import datetime
-import pathlib
 from os.path import basename
 from __log_fn import setup_logs
 import logging
@@ -29,6 +27,7 @@ def create_upload(db_paths, embed_models, rule_systems, tags):
     previous_chunk_size_s = gr.State(value = None)
     size_name_s = gr.State(value = "Chunk Size")
     true_state_s = gr.State(value = True)
+    upload_status_s = gr.State(value = "")
 
     
     with gr.Blocks() as upload:
@@ -38,6 +37,7 @@ def create_upload(db_paths, embed_models, rule_systems, tags):
             with gr.Column(variant = "panel"):
                 gr.Markdown("Supported file types: .pdf, .docx, .txt, .csv, .epub")
                 upload_file_space = gr.File(label = f"Drag and drop a file")
+                # upload_status_box = gr.Markdown(upload_status_s)  # need to think about how to handle this
             
             with gr.Column(variant = "panel"):
             
@@ -97,7 +97,7 @@ def create_upload(db_paths, embed_models, rule_systems, tags):
         # Look into how to log this information.
         available_rule_systems_dd.select(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_listed_s]).then(fn = update_drop_down, inputs = [documents_listed_s], outputs = [available_documents_dd])
         
-        upload_file_space.upload(fn = load_documents, inputs = [upload_file_space, rule_systems_dd, chunk_size_s, chunk_overlap_s, eb_model_dd]).then(fn = append_state_list, inputs = [rule_systems, rule_systems_dd], outputs = [rule_systems])
+        upload_file_space.upload(fn = load_documents, inputs = [upload_file_space, rule_systems_dd, chunk_size_s, chunk_overlap_s, eb_model_dd], outputs = [upload_status_s]).then(fn = append_state_list, inputs = [rule_systems, rule_systems_dd], outputs = [rule_systems])
 
         delete_document_btn.click(fn = delete_document, inputs = [available_rule_systems_dd, available_documents_dd]).then(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_listed_s]).then(fn = update_drop_down, inputs = [documents_listed_s], outputs = [available_documents_dd])
         
@@ -107,6 +107,19 @@ def create_upload(db_paths, embed_models, rule_systems, tags):
 
 
 if __name__ in "__main__":
+    from datetime import datetime
+    import pathlib
+
+    cwd = pathlib.Path.cwd()
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")    
+
+    log_dir = cwd / "Logs"
+    log_dir.mkdir(parents = True, exist_ok = True)
+    
+    logger = setup_logs(__name__, log_dir / f"{pathlib.Path(basename(__file__)).stem}_{timestamp}.log")
+
     TECH_UPLOAD, upload_components = create_upload(["DB Path"], ["Embedding Choice"], ["AD&D", "Shadowrun", "Rifts"], ["Tag 1", "Tag 2", "Tag 3"])
+else:
     logger = logging.getLogger(__name__)
-    setup_logs(pathlib.Path(basename(__file__)).stem)
+    print("Rendered Upload Tab")
+    logger.info("Rendered Upload Tab")
