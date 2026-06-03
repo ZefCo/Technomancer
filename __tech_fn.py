@@ -2,8 +2,6 @@ import pathlib
 from os.path import basename
 from __log_fn import setup_logs
 import logging
-logger = logging.getLogger(__name__)
-setup_logs(pathlib.Path(basename(__file__)).stem)
 
 import gradio as gr
 
@@ -271,3 +269,8 @@ def user_submit(user_msg, chat_history, *args, **kwargs):
     chat_history.append({"role": "user", "content": user_msg})
     chat_history.append({"role": "assistant", "content": ""})
     return "", chat_history
+
+
+if __name__ in "__main__":
+    logger = logging.getLogger(__name__)
+    setup_logs(pathlib.Path(basename(__file__)).stem)

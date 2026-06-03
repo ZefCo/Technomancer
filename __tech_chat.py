@@ -3,11 +3,6 @@ import pathlib
 from os.path import basename
 from __log_fn import setup_logs
 import logging
-logger = logging.getLogger(__name__)
-setup_logs(pathlib.Path(basename(__file__)).stem)
-
-start = datetime.now()
-logger.info(f"Started loading Chat Tab script | Start {start.strftime("%H:%M:%S")}")
 
 import gradio as gr
 
@@ -83,8 +78,5 @@ def create_chat(embed_models, lang_models, rule_systems):
 
 if __name__ in "__main__":
     TECH_CHAT, _ = create_chat(["Embedding Choice"], ["Language Choice"], ["AD&D", "Shadowrun", "Rifts"])
-else:
-    end = datetime.now()
-    delta = end - start
-    logger.info(f"Finished loading Chat Tab script | End {end.strftime("%H:%M:%S")} | Total load time: {delta.microseconds} microseconds (10**-6 s)")
-    print("Rendered Chat Tab")
+    logger = logging.getLogger(__name__)
+    setup_logs(pathlib.Path(basename(__file__)).stem)

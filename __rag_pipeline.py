@@ -3,8 +3,7 @@ import pathlib
 from os.path import basename
 from __log_fn import setup_logs
 import logging
-logger = logging.getLogger(__name__)
-setup_logs(pathlib.Path(basename(__file__)).stem)
+
 
 import chromadb
 
@@ -410,3 +409,7 @@ def query_rag(message: str, history: list, collection: str, model: str, embeddin
 
 # print("Finished loading RAG Pipeline")
 # Log file that it is finished loading
+
+if __name__ in "__main__":
+    logger = logging.getLogger(__name__)
+    setup_logs(pathlib.Path(basename(__file__)).stem)
