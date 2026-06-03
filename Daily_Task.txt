@@ -1,5 +1,10 @@
+6/3/26
+-Work on query routing
+-Work on logging of query routing.
+6/2/26
+-Finish logging system to at least 50% - Done. Foundation set, can be updated as more things are added.
 6/1/26
--Get logging system started
+-Get logging system started - done
 -Get query routed system started/investigated
 5/29/26
 -Delete files from database - done
