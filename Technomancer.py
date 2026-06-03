@@ -1,31 +1,9 @@
-from datetime import datetime
 import pathlib
+from os.path import basename
+from __log_fn import setup_logs
 import logging
-cwd = pathlib.Path.cwd()
-
-def setup_logs():
-    '''
-    Makes sure the logs are setup and ready to go. This should be running before the other scripts are accessed.
-    '''
-    log_dir = cwd / "Logs"
-    log_dir.mkdir(exist_ok = True)
-
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    log_file = log_dir / f"Technomancer_{timestamp}.log"
-
-    logging.basicConfig(level = logging.INFO, 
-                        format = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s", 
-                        handlers = [logging.FileHandler(log_file)])
-    
-def check_ollama():
-    '''
-    Checks if Ollama is running the in the background. Since this can be on a windows or a mac or a linux machine, it will be os dependent.
-    https://tabbydata.com/how-to-check-if-ollama-server-is-running/
-    '''
-    # import os
-
-setup_logs()
 logger = logging.getLogger(__name__)
+setup_logs(pathlib.Path(basename(__file__)).stem)
 
 import gradio as gr
 
@@ -33,11 +11,11 @@ from __rag_pipeline import find_collections, find_documents
 
 import __tech_about as tech_about
 from __tech_chat import create_chat
-from __tech_fn import sort_models, load_paths, load_tags, update_drop_down, update_system_prompt, update_textbox, update_chunks, import_setting, chatbot_avatars
+from __tech_fn import sort_models, load_paths, load_tags, update_drop_down, update_system_prompt, update_textbox, import_setting, chatbot_avatars
 from __tech_upload import create_upload
 
+cwd = pathlib.Path.cwd()
 
-# Log all the variables as they get loaded
 RULE_SYSTEMS = find_collections()  # this will be the various collections in the database.
 LANG_MODELS, EMBED_MODELS = sort_models()
 DBOH = load_paths()
@@ -62,14 +40,24 @@ with gr.Blocks(title = "Technomancer v0.5") as Technomancer:
             tech_about.about.render()
          
         with gr.Tab(label = "Technomancer Chat") as chat_tab:
-            # TECH_CHAT, chat_components = create_chat(lang_models, rule_systems, system_content, embed_models)
-            TECH_CHAT, chat_components = create_chat(embed_models, lang_models, rule_systems)
+            try:
+                TECH_CHAT, chat_components = create_chat(embed_models, lang_models, rule_systems)
+            except Exception as e:
+                # log that chat cannot be loaded properly.
+                logger.critical(f"Something went wrong when starting Chat Tab: Error type {type(e)}")
+                logger.critical(f"{e}")
+                raise RuntimeError("Cannot load Chat Tab")
 
 
         with gr.Tab(label = "Database of Holding") as upload_tab:
-            TECH_UPLOAD, upload_components = create_upload(db_paths, embed_models, rule_systems, tags)
+            try:
+                TECH_UPLOAD, upload_components = create_upload(db_paths, embed_models, rule_systems, tags)
+            except Exception as e:
+                # loga that upload tab cannot be loaded properly.
+                logger.critical(f"Something went wrong when starting Upload Tab: Error type {type(e)}")
+                logger.critical(f"{e}")
+                raise RuntimeError("Cannot load Upload Tab")
 
-    # upload_tab.select(fn = update_drop_down, inputs = [], outputs = [])
     upload_tab.select(fn = update_drop_down, inputs = [rule_systems], outputs = [upload_components["available_collections"]]).then(fn = update_drop_down, inputs = [rule_systems], outputs = [upload_components["rule_system"]]).then(fn = update_drop_down, inputs = [embed_models], outputs = [upload_components["eb_model"]]).then(fn = update_drop_down, inputs = [db_paths], outputs = [upload_components["list_of_db"]])
     chat_tab.select(fn = update_drop_down, inputs = [lang_models], outputs = [chat_components["model_choice"]]).then(fn = update_drop_down, inputs = [rule_systems], outputs = [chat_components["collection_choice"]]).then(fn = update_drop_down, inputs = [embed_models], outputs = [chat_components["embedding_choice"]]).then(fn = chatbot_avatars, inputs = [user_avatar, bot_avatar], outputs = [chat_components["chatbot"]])
 

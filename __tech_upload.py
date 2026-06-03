@@ -1,23 +1,40 @@
+from datetime import datetime
+import pathlib
+from os.path import basename
+from __log_fn import setup_logs
 import logging
 logger = logging.getLogger(__name__)
+setup_logs(pathlib.Path(basename(__file__)).stem)
+
+start = datetime.now()
+logger.info(f"Started loading Chat Tab script | Start {start.strftime("%H:%M:%S")}")
 
 import gradio as gr
 
 from __rag_pipeline import load_documents, find_documents, delete_document, create_collection
 
-from __tech_fn import update_drop_down, append_state_list, update_textbox, update_chunk, change_state_list, update_slider
+from __tech_fn import update_drop_down, append_state_list, update_textbox, change_state, change_state_list, update_slider, change_state_per
 
 
 
 def create_upload(db_paths, embed_models, rule_systems, tags):
     '''
     '''
-    documents_listed = gr.State([])
-    default_text_message = gr.State(value = "Type in a new rule system/collection")
-    chunk_size = gr.State(value = 512)
-    chunk_overlap = gr.State(value = 50)
-    document_tags = gr.State(value = [])
-    empty_values = gr.State(value = [])  # this is just to clear a drop down
+    chunk_overlap_s = gr.State(value = 50)
+    chunk_size_s = gr.State(value = 512)
+    default_text_message_s = gr.State(value = "Type in a new rule system/collection")
+    documents_listed_s = gr.State([])
+    document_tags_s = gr.State(value = [])
+    empty_values_s = gr.State(value = [])  # this is just to clear a drop down
+    false_state_s = gr.State(value = False)
+    overlap_name_s = gr.State(value = "Chunk Overlap")
+    percent_s = gr.State(value = 0.1)
+    previous_embed_s = gr.State(value = None)
+    previous_chunk_overlap_s = gr.State(value = None)
+    previous_chunk_size_s = gr.State(value = None)
+    size_name_s = gr.State(value = "Chunk Size")
+    true_state_s = gr.State(value = True)
+
     
     with gr.Blocks() as upload:
         
@@ -32,7 +49,7 @@ def create_upload(db_paths, embed_models, rule_systems, tags):
                 # with gr.Row():
                 gr.Markdown("## Rule System & Tags")
                 gr.Markdown("All documents need to be added to a rule system, a group that the document can belong to. To create a rule system group, select from or type into the dropdown menu. Tags can be added to any document, which will make searching those documents with Technomancer easier. If none is selected, the document will be added to 'Generic.'")
-                rule_system_dd = gr.Dropdown(label = "Rule System to Upload to (Required)", choices = [], interactive = True, allow_custom_value = True)
+                rule_systems_dd = gr.Dropdown(label = "Rule System to Upload to (Required)", choices = [], interactive = True, allow_custom_value = True)
                     # new_rule_system = gr.Textbox(label = None, submit_btn = True, placeholder = "Type in a new rule system/collection")
                 with gr.Row():
                     document_tags_dd = gr.Dropdown(choices = ["NPCs", "Lore", "Optional", "Sci Fi", "Fantasy"], label = "Tags to organize documents (not implemented yet)", multiselect = True, allow_custom_value = True, scale = 2)
@@ -54,7 +71,7 @@ def create_upload(db_paths, embed_models, rule_systems, tags):
 
                     with gr.Row():
                         with gr.Column():
-                            available_collections_dd = gr.Dropdown(choices = [], label = "Choose Collection", interactive = True)
+                            available_rule_systems_dd = gr.Dropdown(choices = [], label = "Choose Collection", interactive = True)
 
                         with gr.Column():
                             available_documents_dd = gr.Dropdown(choices = [], label = "Available documents in selected collection", interactive = True)
@@ -79,20 +96,25 @@ def create_upload(db_paths, embed_models, rule_systems, tags):
                         with gr.Column():
                             gr.Markdown("Reserved for other options. Not sure what they are.")
                 
-        c_size_slide.change(fn = update_chunk, inputs = [c_size_slide], outputs = [chunk_size]).then(fn = update_slider, inputs = [chunk_size * .1], outputs = [c_overlap_slide]).then(fn = update_chunk, inputs = [c_overlap_slide], outputs = [chunk_overlap])  # This might not work. I'm not confident it will.
-        c_overlap_slide.change(fn = update_chunk, inputs = [c_overlap_slide], outputs = [chunk_overlap]).then(fn = update_chunk, inputs = [c_size_slide], outputs = [chunk_size])  # both will update each other, just in case something has been adjusted. It's always listening for changes.
+        c_size_slide.change(fn = change_state, inputs = [c_size_slide, previous_chunk_size_s, true_state_s, size_name_s], outputs = [chunk_size_s]).then(fn = update_slider, inputs = [chunk_size_s, percent_s], outputs = [c_overlap_slide]).then(fn = change_state, inputs = [c_overlap_slide, previous_chunk_overlap_s, true_state_s, overlap_name_s], outputs = [chunk_overlap_s])  # This might not work. I'm not confident it will.
+        c_overlap_slide.change(fn = change_state, inputs = [c_overlap_slide, previous_chunk_overlap_s, true_state_s, overlap_name_s], outputs = [chunk_overlap_s])  # this used to update both the chunk size and overlap. Now this just updates the overlap.
 
-        available_collections_dd.select(fn = find_documents, inputs = [available_collections_dd], outputs = [documents_listed]).then(fn = update_drop_down, inputs = [documents_listed], outputs = [available_documents_dd])
+        # Look into how to log this information.
+        available_rule_systems_dd.select(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_listed_s]).then(fn = update_drop_down, inputs = [documents_listed_s], outputs = [available_documents_dd])
         
-        upload_file_space.upload(fn = load_documents, inputs = [upload_file_space, rule_system_dd, chunk_size, chunk_overlap, eb_model_dd]).then(fn = append_state_list, inputes = [rule_system_dd], outputs = [rule_systems])
+        upload_file_space.upload(fn = load_documents, inputs = [upload_file_space, rule_systems_dd, chunk_size_s, chunk_overlap_s, eb_model_dd]).then(fn = append_state_list, inputs = [rule_systems, rule_systems_dd], outputs = [rule_systems])
 
-        delete_document_btn.click(fn = delete_document, inputs = [available_collections_dd, available_documents_dd]).then(fn = find_documents, inputs = [available_collections_dd], outputs = [documents_listed]).then(fn = update_drop_down, inputs = [documents_listed], outputs = [available_documents_dd])
+        delete_document_btn.click(fn = delete_document, inputs = [available_rule_systems_dd, available_documents_dd]).then(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_listed_s]).then(fn = update_drop_down, inputs = [documents_listed_s], outputs = [available_documents_dd])
         
-        add_doc_tags.click(fn = change_state_list, inputs = [document_tags_dd], outputs = [document_tags])
+        add_doc_tags.click(fn = change_state_list, inputs = [document_tags_dd], outputs = [document_tags_s])
 
-    return upload, {"available_collections": available_collections_dd, "rule_system": rule_system_dd, "eb_model": eb_model_dd, "list_of_db": list_of_db_dd}
+    return upload, {"available_collections": available_rule_systems_dd, "rule_system": rule_systems_dd, "eb_model": eb_model_dd, "list_of_db": list_of_db_dd}
 
-print("Rendered Upload Tab")
 
 if __name__ in "__main__":
     TECH_UPLOAD, upload_components = create_upload(["DB Path"], ["Embedding Choice"], ["AD&D", "Shadowrun", "Rifts"], ["Tag 1", "Tag 2", "Tag 3"])
+else:
+    end = datetime.now()
+    delta = end - start
+    logger.info(f"Finished loading Upload Tab script | End {end.strftime("%H:%M:%S")} | Total load time: {delta.microseconds} microseconds (10**-6 s)")
+    print("Rendered Upload Tab")

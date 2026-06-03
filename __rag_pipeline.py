@@ -1,5 +1,10 @@
+from datetime import datetime
+import pathlib
+from os.path import basename
+from __log_fn import setup_logs
 import logging
 logger = logging.getLogger(__name__)
+setup_logs(pathlib.Path(basename(__file__)).stem)
 
 import chromadb
 
@@ -18,8 +23,6 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableBranch, RunnableLambda, RunnablePassthrough
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-
-import pathlib
 
 cwd = pathlib.Path.cwd()
 chroma_database_dir = cwd / "DB_of_Holding"
@@ -98,7 +101,11 @@ def find_collections():
     '''
     client = _get_client()
     collections = client.list_collections()
-    if collections: collections = [human_collection(collection.name) for collection in collections]
+    if collections: 
+        collections = [human_collection(collection.name) for collection in collections]
+        logger.info(f"Collections found in database: {collections}")
+    else:
+        logger.info(f"No collections found in database")
 
     return collections
 

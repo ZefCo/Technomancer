@@ -1,11 +1,13 @@
+import pathlib
+from os.path import basename
+from __log_fn import setup_logs
 import logging
 logger = logging.getLogger(__name__)
+setup_logs(pathlib.Path(basename(__file__)).stem)
 
 import gradio as gr
 
 import ollama
-
-import pathlib
 
 import re
 
@@ -50,6 +52,22 @@ def change_state_list(state_list):
     return state_list
 
 
+def change_state(new_state, old_state = None, 
+                 log_info = False, state_name = "State"):
+    '''
+    Changes the state.
+    '''
+    if log_info: logger.info(f"{state_name} changed | Old State: {old_state} | New State: {new_state}")
+    return new_state
+
+
+def change_state_per(old_state):
+    '''
+    Changes a state to be 0.1 of the old state. Useful for the chunk overlap
+    '''
+    return int(0.1 * old_state)
+
+
 def check_path(paths: list):
     '''
     Checks to make sure the path is a valid path and exists. Transforms it to a string and returns the list.
@@ -58,7 +76,13 @@ def check_path(paths: list):
     path: pathlib.Path
     return_paths = list()
     for path in paths:
-        path.mkdir(parents = True, exist_ok = True)
+        try:
+            path.mkdir(parents = True, exist_ok = False)
+        except FileExistsError as e:
+            logger.info(f"Found already existsing directory | {path}")
+        else:
+            logger.info(f"Created new path to folder | {path}")
+
         return_paths.append(str(path))
 
     return return_paths
@@ -84,10 +108,15 @@ def find_models():
     '''
     Finds all the models that are installed on the computer. Meant to be run when the server starts.
     '''
-    # Add logging to this, return which lists were found
     result = subprocess.run(['ollama', 'list'], capture_output = True, text = True)
+    if len(result.stderr) > 0: logger.critical(f"Errors when pulling Ollama modes | {result.stderr}")
+    # Shut down system? Raise error?
+    
     lines = result.stdout.strip().splitlines()[1:]  # Skip header line
+    
     models = [line.split()[0] for line in lines]  # Get model names from the first column
+    logger.info(f"Found Models at runtime | {models}")
+    
     return models
 
 
@@ -123,9 +152,10 @@ def import_setting(setting_file):
     '''
     Import a settings file
     '''
-    # Add to log when this is called and used.
+    logger.info(f"Loading settings | File {setting_file}")
     with open(cwd / "Settings" / setting_file, "r") as file:
         settings = yaml.safe_load(file)
+    logger.info(f"Loaded settings | {settings}")
 
     return settings
 
@@ -168,6 +198,9 @@ def sort_models():
         if re.search(r"embedding", model): embedding.append(model)
         else: language.append(model)
 
+    logger.info(f"Language models found | {language}")
+    logger.info(f"Embedding models found | {embedding}")
+
     return language, embedding
 
 
@@ -193,11 +226,12 @@ def technomancer_response(chat_history, lang_model, embed_model, *args, **kwargs
 
 
 
-def update_chunk(chunk):
-    '''
-    Will update both chunks and overlap as the slider is adjusted.
-    '''
-    return chunk
+# def update_chunk(old_chunk, new_chunk):
+#     '''
+#     Will update both chunks and overlap as the slider is adjusted.
+#     '''
+#     logger.info(f"Updating")
+#     return chunk
 
 
 def update_drop_down(choices):
@@ -208,11 +242,11 @@ def update_drop_down(choices):
     else: return gr.Dropdown(choices = [])
 
 
-def update_slider(value):
+def update_slider(value, percent = 1):
     '''
     Updates the slider value
     '''
-    return gr.Slider(value = value)
+    return gr.Slider(value = int(percent * value))
 
 
 def update_system_prompt(new_prompt, current):

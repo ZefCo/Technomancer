@@ -1,11 +1,19 @@
+from datetime import datetime
+import pathlib
+from os.path import basename
+from __log_fn import setup_logs
 import logging
 logger = logging.getLogger(__name__)
+setup_logs(pathlib.Path(basename(__file__)).stem)
+
+start = datetime.now()
+logger.info(f"Started loading Chat Tab script | Start {start.strftime("%H:%M:%S")}")
 
 import gradio as gr
 
 from __rag_pipeline import find_documents
 
-from __tech_fn import user_submit, technomancer_response, update_system_prompt, update_drop_down, update_textbox
+from __tech_fn import change_state, technomancer_response, update_system_prompt, update_drop_down, update_textbox, user_submit
 
 
 
@@ -13,11 +21,18 @@ from __tech_fn import user_submit, technomancer_response, update_system_prompt, 
 def create_chat(embed_models, lang_models, rule_systems):
     '''
     '''
-    documents_listed = gr.State([])
+    documents_listed_s= gr.State([])
+    embed_name_s = gr.State(value = "Embedding Model")
+    false_state_s = gr.State(value = False)
+    lang_name_s = gr.State(value = "Language Model")
+    previous_state_lang_s = gr.State(value = None)
+    previous_state_embed_s = gr.State(value = None)
+    true_state_s = gr.State(value = True)
+
     
     with gr.Blocks() as chat:
         with gr.Row():
-            chatbot = gr.Chatbot()
+            chatbot = gr.Chatbot(buttons = ["copy_all"])
 
         with gr.Row(equal_height = True):
             with gr.Column(scale = 12):
@@ -41,30 +56,35 @@ def create_chat(embed_models, lang_models, rule_systems):
                 with gr.Row(equal_height = True):
                     use_rag_check = gr.Checkbox(label = "Look at Rulebooks & Notes", value = False, info = "When enabled, Technomancer will search the available rule systems for answers.", visible = False)
 
-                    collection_choice_dd = gr.Dropdown(label = "Rule System", choices = [], interactive = True)
+                    available_rule_systems_dd = gr.Dropdown(label = "Rule System", choices = [], interactive = True)
 
                     available_documents_dd = gr.Dropdown(label = "Available Documents in Selected Rule System for reference.", choices = [], interactive = True)
 
             with gr.Accordion(label = "Model Choice", open = False) as adv_feat_acc:
                 gr.Markdown("Note, changing this mid conversation might cause confusion/hallucinations within the chatbot.")
-                # Add logging here to check if the model has been changed during conversation.
-                model_choice = gr.Dropdown(label = "Available language models", choices = [], info = "This may report both Language models and Embedding models: please know which one is which when selecting here! You want the Language model.", interactive = True)
-                # Add logging here to both of these: one to check if the embedding model has been changed, another to check if the database has been changed.
-                embedding_choice = gr.Dropdown(info = "To be implemented", label = "Embedding Model Choices", choices = [], interactive = True)
-                database_choice = gr.Dropdown(info = "This is linked to the embedding model choice. Once fully implemented, this will tell the user what databases are available with the chosen embedding model.", label = "Choices of Database", choices = [], interactive = True)
+                model_choice_dd = gr.Dropdown(label = "Available language models", choices = [], info = "This may report both Language models and Embedding models: please know which one is which when selecting here! You want the Language model.", interactive = True)
+                embedding_choice_dd = gr.Dropdown(info = "To be implemented", label = "Embedding Model Choices", choices = [], interactive = False)
+                database_choice_dd = gr.Dropdown(info = "This is linked to the embedding model choice. Once fully implemented, this will tell the user what databases are available with the chosen embedding model.", label = "Choices of Database", choices = [], interactive = True)
 
-        chat_response = msg_box.submit(user_submit, [msg_box, chatbot], [msg_box, chatbot], queue = False).then(technomancer_response, [chatbot, model_choice, embedding_choice, collection_choice_dd, use_rag_check], chatbot)
+        chat_response = msg_box.submit(user_submit, [msg_box, chatbot], [msg_box, chatbot], queue = False).then(technomancer_response, [chatbot, model_choice_dd, embedding_choice_dd, available_rule_systems_dd, use_rag_check], chatbot)
         
-        collection_choice_dd.select(fn = find_documents, inputs = [collection_choice_dd], outputs = [documents_listed]).then(fn = update_drop_down, inputs = [documents_listed], outputs = [available_documents_dd])
+        available_rule_systems_dd.select(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_listed_s]).then(fn = update_drop_down, inputs = [documents_listed_s], outputs = [available_documents_dd])
         
         stop_btn.click(fn = None, inputs = None, outputs = None, cancels = [chat_response])
 
-    return chat, {"model_choice": model_choice, "collection_choice": collection_choice_dd, "embedding_choice": embedding_choice, "chatbot": chatbot}
+        model_choice_dd.select(fn = change_state, inputs = [model_choice_dd, previous_state_lang_s, true_state_s, lang_name_s], outputs = [previous_state_lang_s])
+
+        # Add logging ability for what database choices show up too
+        embedding_choice_dd.select(fn = change_state, inputs = [embedding_choice_dd, previous_state_embed_s, true_state_s, embed_name_s], outputs = [previous_state_embed_s])
+
+    return chat, {"model_choice": model_choice_dd, "collection_choice": available_rule_systems_dd, "embedding_choice": embedding_choice_dd, "chatbot": chatbot}
 
 
 
 if __name__ in "__main__":
     TECH_CHAT, _ = create_chat(["Embedding Choice"], ["Language Choice"], ["AD&D", "Shadowrun", "Rifts"])
-
-print("Rendered Chat Tab")
-# Log output that it has been uploaded
+else:
+    end = datetime.now()
+    delta = end - start
+    logger.info(f"Finished loading Chat Tab script | End {end.strftime("%H:%M:%S")} | Total load time: {delta.microseconds} microseconds (10**-6 s)")
+    print("Rendered Chat Tab")
