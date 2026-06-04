@@ -26,6 +26,8 @@ FastAPI (not implemented yet)
 
 You can install any Ollama model you want, but you must install a language model and an embedding model. Multiple models can be installed, and you can switch between them (as of 6/3/26, only the language model can be switched, the embedding model can be selected, but only one should be picked right now). If you are familiar with how to make new models, you can also design your own from the ones installed, and use those. However, realize the system prompt from Technomancer might blow that out. A model file title Modelfile_Technomancer is provided for creating a Technomancer personality for the chatbot, otherwise it will use whatever language model provided. No system content prompt is used, which allows for more flexibility with language model personalities. Also note for embedding models, size does have an effect on preformance. Qwen 8b provides more nuance to retrival, but is slower, while Qwen 4b provides less nuance (and may come back with false positives) but is much faster. Overall, play with several different models until you find something you feel works well.
 
+Note: there is a settings folder title EmbeddingModels.yaml that allows for the identification of embedding models (and by extension language models): this list is probably not comprehensive, and so if the embedding model you pick is not there, please add it.
+
 (The following is not yet implemented)
 For advanced users, it is possible to user different databases and to switch embedding models for those different databases. However, only one embedding model maybe be used for a database (a database cannot suppoed multiple embedding models). When in doubt however, pick a single embedding model for all databases. 
 

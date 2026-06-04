@@ -1,13 +1,12 @@
 from datetime import datetime
 import pathlib
-from os.path import basename
-from __log_fn import setup_logs
 import logging
 logger = logging.getLogger(__name__)
 logger.info(f"Reading RAG Pipeline file @ (time to be implemented)")
 
 
 import chromadb
+
 
 from functools import lru_cache
 
@@ -43,9 +42,10 @@ def _clean_collection(collection: str):
     # for c in collection[1:len(collection)]:
     #     ascii_collection = f"{ascii_collection}_{ord(c)}"
 
+    logger.info(f"Input Collection String name | {collection}")
     ascii_collection = "_".join(str(ord(c)) for c in collection)
+    logger.info(f"Output Collection ASCII name | {ascii_collection}")
 
-    logger.info(f"Convertion Str to ASCII | {collection} | {ascii_collection}")
 
     if len(ascii_collection) < 3:
         for _ in range(3 - len(ascii_collection)): ascii_collection = ascii_collection + f"_{ord("z")}"
@@ -153,15 +153,15 @@ def find_collections():
 
 
 # Log if the collections found are empyt or not. Send lenth of list of titles to log.
-def find_documents(collection):
+def find_documents(hr_collection):
     '''
     Finds all available documents in a given collection. Feed in the human readable collection title.
     '''
     titles = set()
-    collection = _clean_collection(collection)
+    ascii_collection = _clean_collection(hr_collection)
 
     client = _get_client()
-    local_collection = client.get_collection(str(collection))
+    local_collection = client.get_collection(str(ascii_collection))
     results: dict = local_collection.get() # type: ignore  There's an error here that shouldn't be an error. It works fine.
 
     items = 0
@@ -171,10 +171,10 @@ def find_documents(collection):
             if title: titles.add(title)
             else: titles.add(pathlib.Path(item["source"]).stem)  # this is in case the title doesn't have a Title.
         except Exception as e:
-            logger.warning(f"Cannont find title or source in item retreived from collection {collection} | Error type {type(e)} | {e}")
+            logger.warning(f"Cannont find title or source in item retreived from collection {hr_collection} | Error type {type(e)} | {e}")
         else:
             items += 1
-    logger.info(f"Successfully found {items} documents in collection {collection}")
+    logger.info(f"Successfully found {items} | collection {ascii_collection}| {hr_collection}")
     
     return list(titles)
 
@@ -324,7 +324,7 @@ def load_documents(file, collection, chunk_size, chunk_overlap, embed_model,
        document = _load_document(file, DocLoader)
     except Exception as e:
         logger.error(f"Failed to load document | {file} | {type(e)} | {e}")
-        return f"Error loading file {type(e)}"
+        return f"Error loading file: {type(e)}"
     
     if document is None:
         logger.warning(f"Document loaded but was empty | {file}")
@@ -515,8 +515,10 @@ def query_rag_routed(message: str, history: list, lang_model: str, embed_model: 
     if len(collections_to_search) == 1: 
         retriever = _get_retriever(collections_to_search[0], embed_model)
     else:
-        retrievers = [_get_retriever(c, embed_model, k = 3) for c in collections_to_search]
+        retrievers = [_get_retriever(c, embed_model, k = 10) for c in collections_to_search]
         retriever = _merge_retrievers(retrievers)
+    
+    logger.info(f"Generating query | {lang_model} | {embed_model}")
     
     yield from _rag_response(message, history, lang_model, retriever)
 
@@ -555,10 +557,16 @@ def _rag_response(message, history, lang_model, retriever):
     )
 
     reponse = ""
-
-    for chunk in chunk.stream({"question": message, "history": lc_history}):
-        response += chunk
-        yield reponse
+    try:
+        for chunk in chain.stream({"question": message, "history": lc_history}):
+            reponse += chunk
+            yield reponse
+    except chromadb.errors.InvalidArgumentError as e:
+        logger.critical(f"Unable to return message | check embeddeing model being used | {e}")
+        return f"Error generating response"
+    except Exception as e:
+        logger.critical(f"Unable to return message | New Error | {type(e)} | {e}")
+        return f"Error generating response"
 
 
 

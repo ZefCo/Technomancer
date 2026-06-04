@@ -1,0 +1,13 @@
+models:
+- nomic-embed-text-v2-moe
+- qwen3-embedding
+- embeddinggemma
+- nomic-embed-text
+- mxbai-embed-large
+- bge-m3
+- snowflake-arctic-embed
+- all-minilm
+- paraphrase-multilingual
+- snowflake-arctic-embed2
+- granite-embedding
+- bge-large
