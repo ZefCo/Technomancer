@@ -1,3 +1,0 @@
-Notes on how to do the pdf ingestion
-
-One major issue will be how to deal with tables.

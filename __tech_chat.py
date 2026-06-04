@@ -8,22 +8,16 @@ from __log_fn import setup_logs
 
 import gradio as gr
 
+from __states import avatars_state, documents_list_state, embed_model_state, embed_models_list_state, lang_model_state, lang_models_list_state, name_embed_state, name_lang_state, rule_system_state, true_state
+
 from __rag_pipeline import find_documents
 
-from __tech_fn import change_state, technomancer_response, update_system_prompt, update_drop_down, update_textbox, user_submit
+from __tech_fn import change_state, technomancer_response, update_drop_down, update_textbox, user_submit
 
 
-def create_chat(embed_models, lang_models, rule_systems):
+def create_chat():
     '''
     '''
-    documents_listed_s= gr.State([])
-    embed_name_s = gr.State(value = "Embedding Model")
-    false_state_s = gr.State(value = False)
-    lang_name_s = gr.State(value = "Language Model")
-    previous_state_lang_s = gr.State(value = None)
-    previous_state_embed_s = gr.State(value = None)
-    true_state_s = gr.State(value = True)
-
     
     with gr.Blocks() as chat:
         with gr.Row():
@@ -57,27 +51,22 @@ def create_chat(embed_models, lang_models, rule_systems):
 
             with gr.Accordion(label = "Model Choice", open = False) as adv_feat_acc:
                 gr.Markdown("Note, changing this mid conversation might cause confusion/hallucinations within the chatbot.")
-                model_choice_dd = gr.Dropdown(label = "Available language models", choices = [], info = "This may report both Language models and Embedding models: please know which one is which when selecting here! You want the Language model.", interactive = True)
-                embedding_choice_dd = gr.Dropdown(info = "To be implemented", label = "Embedding Model Choices", choices = [], interactive = False)
+                lang_model_choice_dd = gr.Dropdown(label = "Available language models", choices = [], info = "This may report both Language models and Embedding models: please know which one is which when selecting here! You want the Language model.", interactive = True)
+                embedding_choice_dd = gr.Dropdown(info = "To be implemented", label = "Embedding Model Choices", choices = [], interactive = True)
                 database_choice_dd = gr.Dropdown(info = "This is linked to the embedding model choice. Once fully implemented, this will tell the user what databases are available with the chosen embedding model.", label = "Choices of Database", choices = [], interactive = True)
 
-        chat_response = msg_box.submit(user_submit, [msg_box, chatbot], [msg_box, chatbot], queue = False).then(technomancer_response, [chatbot, model_choice_dd, embedding_choice_dd], chatbot)
+        chat_response = msg_box.submit(user_submit, [msg_box, chatbot], [msg_box, chatbot], queue = False).then(technomancer_response, [chatbot, lang_model_choice_dd, embedding_choice_dd], chatbot)
         
-        available_rule_systems_dd.select(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_listed_s]).then(fn = update_drop_down, inputs = [documents_listed_s], outputs = [available_documents_dd])
+        available_rule_systems_dd.select(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_list_state]).then(fn = update_drop_down, inputs = [documents_list_state], outputs = [available_documents_dd])
         
         stop_btn.click(fn = None, inputs = None, outputs = None, cancels = [chat_response])
 
-        model_choice_dd.select(fn = change_state, inputs = [model_choice_dd, previous_state_lang_s, true_state_s, lang_name_s], outputs = [previous_state_lang_s])
+        lang_model_choice_dd.select(fn = change_state, inputs = [lang_model_choice_dd, lang_model_state, true_state, name_lang_state], outputs = [lang_model_state])
 
         # Add logging ability for what database choices show up too
-        embedding_choice_dd.select(fn = change_state, inputs = [embedding_choice_dd, previous_state_embed_s, true_state_s, embed_name_s], outputs = [previous_state_embed_s])
+        embedding_choice_dd.select(fn = change_state, inputs = [embedding_choice_dd, embed_model_state, true_state, name_embed_state], outputs = [embed_model_state])
 
-    return chat, {"model_choice": model_choice_dd, "collection_choice": available_rule_systems_dd, "embedding_choice": embedding_choice_dd, "chatbot": chatbot}
-
-
-
-# if __name__ in "__main__":
-#     setup_logs(pathlib.Path(basename(__file__)).stem)
+    return chat, {"embed_models_dd": embedding_choice_dd, "lang_models_dd": lang_model_choice_dd,  "rule_systems_dd": available_rule_systems_dd}
 
 
 if __name__ in "__main__":

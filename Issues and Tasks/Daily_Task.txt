@@ -1,7 +1,11 @@
+6/5/26
+-Add metadata tages to files at ingestion
+-Add metadata tags after ingestions
+-Add metadata tags to search
 6/4/26
--Work on creating database with many different files
--interact with that database
--add metadata tags to the files at ingestion.
+-Work on creating database with many different files - done
+-interact with that database - done
+-add metadata tags to the files at ingestion - not done, worked on shared states and testing database with wrong embedding
 6/3/26
 -Work on logging of RAG - done
 -Test various upload documents - work on more tomorrow

@@ -1,7 +1,8 @@
-import pathlib
-cwd = pathlib.Path.cwd()
-from os.path import basename
+import inspect
 import logging
+import pathlib
+
+cwd = pathlib.Path.cwd()
 logger = logging.getLogger(__name__)
 
 
@@ -25,11 +26,13 @@ def append_state_list(states, state):
     '''
     Updates a state list with a new stat added.
     '''
+    logger.info(f"{state} being added to {states}")
     if state and state not in tuple(states):
         states.append(state)
     elif not state and state not in tuple(states):
         states.append("Generic")
-    
+
+    logger.info(f"List is now {states}")
     states.sort()
     return states
 
@@ -57,7 +60,13 @@ def change_state(new_state, old_state = None,
     '''
     Changes the state.
     '''
-    if log_info: logger.info(f"{state_name} changed | Old State: {old_state} | New State: {new_state}")
+    if log_info:
+        caller_frame = inspect.currentframe().f_back
+        caller_code = caller_frame.f_code
+
+        func_name = caller_code.co_name
+        file_name = caller_code.co_filename
+        logger.info(f"{file_name} | {func_name} | {state_name} changed | Old State: {old_state} | New State: {new_state}")
     return new_state
 
 
@@ -86,6 +95,14 @@ def check_path(paths: list):
         return_paths.append(str(path))
 
     return return_paths
+
+
+def _enter_event(value, key_data: gr.KeyUpData):
+    '''
+    Updates something when the enter key is pressed.
+    '''
+    if key_data.key == "Enter":
+        return value
 
 
 def _extract_content(content) -> str:
@@ -158,7 +175,13 @@ def import_setting(setting_file):
     '''
     Import a settings file
     '''
-    logger.info(f"Loading settings | File {setting_file}")
+    caller_frame = inspect.currentframe().f_back
+    caller_code = caller_frame.f_code
+
+    func_name = caller_code.co_name
+    file_name = caller_code.co_filename
+    
+    logger.info(f"{file_name} | {func_name} | Loading settings | File {setting_file}")
     with open(cwd / "Settings" / setting_file, "r") as file:
         settings = yaml.safe_load(file)
     logger.info(f"Loaded settings | {settings}")
@@ -193,19 +216,37 @@ def load_tags():
 
 def sort_models():
     '''
-    Sorts them between embedding and language models. Assumes - and this might be a dangerous assumption - that embedding models contain the word embedding.
+    Sorts them between embedding and language models. There is a (non comprehensive) list of embedding models, and if one of them is found it is tagged as an
+    embedding mode. Again, this is non comprehensive, so that list may need to be adjusted on a per user basis.
+
+    This iterates through all available models tries to match them to an embedding model. If it does, then it appends it to the embedding model list. If it doesn't
+    then it appends it to the langauge model list.
     '''
-    # Add logging here to see which models were sorted to where.
+    embedding_models = import_setting("EmbeddingModels.yaml")
+    embedding_models = tuple(embedding_models["models"])
+    
     language: list = []
     embedding: list = []
     models = find_models()
 
     for model in models:
-        if re.search(r"embedding", model): embedding.append(model)
+        for em in embedding_models:
+            if re.search(em, model): 
+                embedding.append(model)
+                break
         else: language.append(model)
 
-    logger.info(f"Language models found | {language}")
-    logger.info(f"Embedding models found | {embedding}")
+    if len(language) < 1: 
+        logger.critical(f"No Language models identified | {models}")
+        print("No Language models found, check logs and system for models")
+    else: 
+        logger.info(f"Language models found | {language}")
+    
+    if len(embedding) < 1: 
+        logger.critical(f"No Embedding models identified | {models}")
+        print("No Embedding models found, check logs and system for models")
+    else: 
+        logger.info(f"Embedding models found | {embedding}")
 
     return language, embedding
 
@@ -241,11 +282,11 @@ def technomancer_response(chat_history, lang_model, embed_model, *args, **kwargs
 #     return chunk
 
 
-def update_drop_down(choices):
+def update_drop_down(choices, choice: str | None = None):
     '''
     Updates a drop down menu. Useful for rule systems, documents, and model choices
     '''
-    if choices: return gr.Dropdown(choices = choices, value = choices[0] if choices[0] else None)
+    if choices: return gr.Dropdown(choices = choices, value = choice if choice else None)
     else: return gr.Dropdown(choices = [])
 
 
@@ -270,7 +311,7 @@ def update_textbox(message):
     '''
     Updates the textbox.
     '''
-    return gr.Textbox(placeholder = message)
+    return gr.Textbox(value = message)
 
 
 def user_submit(user_msg, chat_history, *args, **kwargs):
