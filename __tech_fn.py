@@ -3,13 +3,11 @@ cwd = pathlib.Path.cwd()
 from os.path import basename
 import logging
 logger = logging.getLogger(__name__)
-logger.info("Reading Gradio functions file")
-
 
 
 import gradio as gr
 
-import ollama
+# import ollama
 
 import re
 
@@ -122,38 +120,38 @@ def find_models():
     return models
 
 
-# Logging should be here, but not sure how. Esepcially since this is related to the query routing.
-def generate_response(message, history, lang_model, embed_model, 
-                      collection = None, use_rag = True,
-                      *args, **kwargs):
-    '''
-    This will route between RAG and the Ollama chat depending on the if a collection is used or not, which hopefully is triggered properly 
-    in the context of the message.
+# # Logging should be here, but not sure how. Esepcially since this is related to the query routing.
+# def generate_response(message, history, lang_model, embed_model, 
+#                       collection: str | None = None, use_rag = True,
+#                       *args, **kwargs):
+#     '''
+#     This will route between RAG and the Ollama chat depending on the if a collection is used or not, which hopefully is triggered properly 
+#     in the context of the message.
     
-    Because of scope creep, I'm hard coding this to ALWAYS use RAG. Honeslty, while it would be useful to maybe use query routing one day, 
-    Technomancer doesn't need it. I'm leaving the option of one day comeing back to it, or if someone clones this and decided they want to
-    implement this themselves, they can. But a) I will not try to fix any errors they come across (sorry, if you're reading this, you're on
-    you're own right now), and b) this project doesn't really require or demand it.
-    '''
-    if use_rag and collection:
-        from __rag_pipeline import query_rag
-        yield from query_rag(message, history, collection, lang_model, embed_model) # type: ignore
-    else:
-        messages = []
+#     Because of scope creep, I'm hard coding this to ALWAYS use RAG. Honeslty, while it would be useful to maybe use query routing one day, 
+#     Technomancer doesn't need it. I'm leaving the option of one day comeing back to it, or if someone clones this and decided they want to
+#     implement this themselves, they can. But a) I will not try to fix any errors they come across (sorry, if you're reading this, you're on
+#     you're own right now), and b) this project doesn't really require or demand it.
+#     '''
+#     if use_rag and collection:
+#         from __rag_pipeline import query_rag_routed
+#         yield from query_rag_routed(message, history, collection, lang_model, embed_model) # type: ignore
+#     else:
+#         messages = []
 
-        for item in history:
-            content = _extract_content(item["content"])
-            if content: messages.append({"role": item["role"], "content": content})  # appends the information into the message with the proper format
+#         for item in history:
+#             content = _extract_content(item["content"])
+#             if content: messages.append({"role": item["role"], "content": content})  # appends the information into the message with the proper format
 
-        messages.append({"role": "user", "content": message})
+#         messages.append({"role": "user", "content": message})
 
-        completion = ollama.chat(model = lang_model, messages = messages, stream = True)
+#         completion = ollama.chat(model = lang_model, messages = messages, stream = True)
 
-        response = ""
-        for chunk in completion:
-            if "message" in chunk and "content" in chunk["message"]:
-                response += chunk["message"]["content"]
-                yield response
+#         response = ""
+#         for chunk in completion:
+#             if "message" in chunk and "content" in chunk["message"]:
+#                 response += chunk["message"]["content"]
+#                 yield response
 
 
 def import_setting(setting_file):
@@ -219,7 +217,6 @@ def stop_command():
     return False
 
 
-# Add logging here, reporting the model and embedding used.
 def technomancer_response(chat_history, lang_model, embed_model, *args, **kwargs):
     '''
     This yields the chatbots response. Again, *args and **kwargs are not really needed, but are here *in case*
@@ -228,7 +225,9 @@ def technomancer_response(chat_history, lang_model, embed_model, *args, **kwargs
     user_msg = _extract_content(raw_user_msg)
     chat_history[-2]["content"] = user_msg
 
-    for response in generate_response(user_msg, chat_history[:-2], lang_model, embed_model, *args, **kwargs):
+    from __rag_pipeline import query_rag_routed
+    logger.info(f"Generating response | Lang Model {lang_model} | Embed Model {embed_model}")
+    for response in query_rag_routed(user_msg, chat_history[:-2], lang_model, embed_model, *args, **kwargs):
         chat_history[-1]["content"] = response  # now the last item is the assistant placeholder
         yield chat_history
 
@@ -284,6 +283,6 @@ def user_submit(user_msg, chat_history, *args, **kwargs):
 # if __name__ in "__main__":
 #     setup_logs(pathlib.Path(basename(__file__)).stem)
 
-print("Loaded functions")
+print("Finished reading Functions file")
 logger.info(f"Finished reading Gradio functions file")
 

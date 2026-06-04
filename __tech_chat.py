@@ -12,8 +12,6 @@ from __rag_pipeline import find_documents
 
 from __tech_fn import change_state, technomancer_response, update_system_prompt, update_drop_down, update_textbox, user_submit
 
-logger = logging.getLogger(__name__)
-
 
 def create_chat(embed_models, lang_models, rule_systems):
     '''
@@ -63,7 +61,7 @@ def create_chat(embed_models, lang_models, rule_systems):
                 embedding_choice_dd = gr.Dropdown(info = "To be implemented", label = "Embedding Model Choices", choices = [], interactive = False)
                 database_choice_dd = gr.Dropdown(info = "This is linked to the embedding model choice. Once fully implemented, this will tell the user what databases are available with the chosen embedding model.", label = "Choices of Database", choices = [], interactive = True)
 
-        chat_response = msg_box.submit(user_submit, [msg_box, chatbot], [msg_box, chatbot], queue = False).then(technomancer_response, [chatbot, model_choice_dd, embedding_choice_dd, available_rule_systems_dd, use_rag_check], chatbot)
+        chat_response = msg_box.submit(user_submit, [msg_box, chatbot], [msg_box, chatbot], queue = False).then(technomancer_response, [chatbot, model_choice_dd, embedding_choice_dd], chatbot)
         
         available_rule_systems_dd.select(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_listed_s]).then(fn = update_drop_down, inputs = [documents_listed_s], outputs = [available_documents_dd])
         
@@ -98,4 +96,4 @@ if __name__ in "__main__":
 else:
     logger = logging.getLogger(__name__)
     print("Rendered Chat Tab")
-    logger.info("Rendered Chat Tab")
+    logger.info("Rendered Chat Tab @ (time to be implemented)")

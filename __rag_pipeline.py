@@ -4,8 +4,7 @@ from os.path import basename
 from __log_fn import setup_logs
 import logging
 logger = logging.getLogger(__name__)
-logger.info(f"Reading RAG Pipeline file")
-
+logger.info(f"Reading RAG Pipeline file @ (time to be implemented)")
 
 
 import chromadb
@@ -25,6 +24,8 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableBranch, RunnableLambda, RunnablePassthrough
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+import ollama
 
 cwd = pathlib.Path.cwd()
 chroma_database_dir = cwd / "DB_of_Holding"
@@ -111,6 +112,29 @@ def delete_document(collection, metadata):
         logger.critical(f"Error deleting chunks for the document with metadata {metadata}")
 
 
+def _direct_response(message: str, history: list, lang_model: str):
+    '''
+    Fallback for General questions, in case the question is classified as GENERAL. This is pretty similar to the other response in __tech_fn.py
+    '''
+    messages = []
+    for item in _gradio_history_to_langchain(history):
+        if isinstance(item, HumanMessage):
+            messages.append({"role": "user", "content": item.content})
+        elif isinstance(item, AIMessage):
+            messages.append({"role": "assistant", "content": item.content})
+    
+    messages.append({"role": "user", "content": message})
+
+    completion = ollama.chat(model = lang_model, messages = messages, stream = True)
+    response = ""
+
+    for chunk in completion:
+        if "message" in chunk and "content" in chunk["message"]:
+            response += chunk["message"]["content"]
+            yield response
+
+
+
 def find_collections():
     '''
     Returns all collections in the database.
@@ -176,23 +200,35 @@ def _get_client():
     '''
     # https://stackoverflow.com/questions/77134962/connecttimeout-error-when-connecting-to-a-chromadb-client-that-is-hosted-on-azur
     # Add connection issues to the client. Send those to the logs
+    logger.info(f"Connecting to client")
     global _chroma_client
     if _chroma_client is None: _chroma_client = chromadb.PersistentClient(path = str(chroma_database_dir))
     return _chroma_client
 
 
 @lru_cache(maxsize=4)
-def _get_embeddings(embeddings):
+def _get_embeddings(embed_model):
     '''
     Currently this is hard coded to only use the qwen3 model embeddings.
 
     Part of RAG Input
     '''
-    return OllamaEmbeddings(model = embeddings)
+    return OllamaEmbeddings(model = embed_model)
+
+
+# def _get_multi_retriever(collections: list[str], k: int = 5):
+#     '''
+#     Returns a single retriever that searches across multiple collections. Mereges results and returns the top k across all of them.
+#     '''
+#     from langchain_core.retrievers import MergerRetriever
+
+#     retrievers = [_get_retriever(col, k = k) for col in collections]
+
+#     return MergerRetriever(retrievers = retrievers)
 
 
 @lru_cache(maxsize = 8)
-def _get_retriever(collection: str, embeddings: str, k: int = 10):
+def _get_retriever(collection: str, embed_model: str, k: int = 10):
     '''
     Returns a retriever for the given collection name.
 
@@ -200,7 +236,7 @@ def _get_retriever(collection: str, embeddings: str, k: int = 10):
     '''
     if not collection: collection = "Generic"
     ascii_collection = _clean_collection(collection)
-    db = Chroma(persist_directory = str(chroma_database_dir), embedding_function = _get_embeddings(embeddings), collection_name = ascii_collection)
+    db = Chroma(persist_directory = str(chroma_database_dir), embedding_function = _get_embeddings(embed_model), collection_name = ascii_collection)
     return db.as_retriever(search_kwargs = {"k": k})
 
 
@@ -229,7 +265,14 @@ def human_collection(collection:str):
     '''
     Turns the ascii collection into a human readable form.
     '''
-    return "".join(chr(int(code)) for code in collection.split("_"))
+    try:
+        human_name = "".join(chr(int(code)) for code in collection.split("_"))
+    
+    except Exception as e:
+        logger.warning(f"Error converting ASCII collection name to Human readable | {collection} | {type(e)} | {e}")
+        return collection
+    
+    return human_name
 
 
 def _load_document(file_path, DocLoader):
@@ -252,115 +295,97 @@ def _load_document(file_path, DocLoader):
     return document
 
 
-def load_documents(file, collection, chunk_size, chunk_overlap, embeddings,
+def load_documents(file, collection, chunk_size, chunk_overlap, embed_model,
                    *args, **kwargs):
     '''
     Loads the document from the input path, then add it to the database.
 
     Part of RAG Input
     '''
-    error_msg = ""
-    collection = _clean_collection(collection)
+    logger.info(f"Loading file | {file} | {collection} | {chunk_size} | {chunk_overlap} | {embed_model}")
+    
+    # error_msg = ""
+    ascii_collection = _clean_collection(collection)
     if isinstance(file, str): file = pathlib.Path(file)
     document = None
     chunks = None
     DocLoader = None
 
-    if file.suffix == ".pdf":
-        DocLoader = PDFPlumberLoader
-        logger.info(f"Document Loader function set to PDF")
-    elif file.suffix == ".txt":
-        DocLoader = TextLoader
-        logger.info(f"Document Loader function set to Text")
-    elif file.suffix == ".csv":
-        DocLoader = UnstructuredCSVLoader  # this one might need some more testing, as csv files have headers and those might need to be read in properly.
-        logger.info(f"Document Loader function set to Unstructured CSV")
-    elif file.suffix == ".epub":
-        DocLoader = UnstructuredEPubLoader
-        logger.info(f"Document Loader function set to Unstructured Epub")
-    else:
-        extention = file.suffix
-        logger.warning(f"Unsuported file type | File extension {extention}")
+    suffix_map = {".pdf": PDFPlumberLoader, ".txt": TextLoader, ".csv": UnstructuredCSVLoader, ".epub": UnstructuredEPubLoader}
+    DocLoader = suffix_map.get(file.suffix)
+
+    if DocLoader is None:
+        logger.error(f"Unsupported file type | {file.suffix}")
+        return f"Error: Unsupported file type: {file.suffix}"
+    
+    logger.info(f"Document loader set to {DocLoader.__name__}")
             
-    document = _load_document(file, DocLoader)
+    try:
+       document = _load_document(file, DocLoader)
+    except Exception as e:
+        logger.error(f"Failed to load document | {file} | {type(e)} | {e}")
+        return f"Error loading file {type(e)}"
+    
+    if document is None:
+        logger.warning(f"Document loaded but was empty | {file}")
 
-    # if document is not None:
-    if document:
+    try:
         chunks = _create_chunks(document, chunk_size, chunk_overlap)
-
-    # if chunks is not None:
-    if chunks:
-        _load_to_Chroma(chunks, collection, embeddings)
-    else:
-        logger.error(f"The document was not able to be loaded")
-        error_msg = "Failed load document to the database, check logs for possible reasons."
-
-    return error_msg
-
-
-# def _load_pdf(file_path):
-#     '''
-#     No longer used
-
-#     Part of RAG Input
-#     '''
-#     loader = PDFPlumberLoader(file_path)
-#     document = loader.load()
-
-#     if not document:
-#         return None
+    except Exception as e:
+        logger.error(f"Failed to create chunks | {type(e)} | {e}")
+        return f"Error chunking document: {type(e)}"
     
-#     return document
-
-
-# def _load_txt(file_path):
-#     '''
-#     No longer used
-
-#     Part of RAG Input
-#     '''
-#     loader = TextLoader(file_path)
-#     document = loader.load()
-
-#     if not document:
-#         return None
+    if chunks is None:
+        logger.warning(f"No chunks created from document | {file}")
+        return "Error: no chunks could be created"
     
-#     return document
+    logger.info(f"Created {len(chunks)} chunks from {file.name}")
+
+    try:
+        _load_to_Chroma(chunks, ascii_collection, embed_model)
+        logger.info(f"Successfully loaded {file.name} into {collection}")
+        return f"Successfully added {len(chunks)} chunks from {file.name} to {collection}."
+    except Exception as e:
+        logger.error(f"Failed to load chunks to Chroma | {type(e)} | {e}")
+        return f"Error writing to database: {e}"
 
 
-def _load_to_Chroma(chunks, collection, embeddings, 
+
+def _load_to_Chroma(chunks, collection, embed_model, batch_size = 50,
                     *args, **kwargs):
     '''
     Loads the documents to a Chroma DB
 
     Part of RAG Input
     '''
-    db = Chroma(persist_directory = str(chroma_database_dir), embedding_function = _get_embeddings(embeddings), collection_name = collection)
-    # update this to tell the log if this is successful or not, and with which embedding was used.
+    hr_collection = human_collection(collection)
+    db = Chroma(persist_directory = str(chroma_database_dir), embedding_function = _get_embeddings(embed_model), collection_name = collection)
 
     chunks = _metadata_IDs(chunks)
-    
+
     existing_items = db.get(include = [])
     existing_ids = set(existing_items["ids"])
-    # print(f"Number of existing documents in the Database: {len(existing_ids)}")
 
-    # upadte this to see how many items are going to be added. Make sure it reminds the log reader how many items were supposed to be added.
-    new_chunks = []
-    for chunk in chunks:
-        if chunk.metadata["id"] not in existing_ids:
-            new_chunks.append(chunk)
+    new_chunks = [c for c in chunks if c.metadata["id"] not in existing_ids]
 
-    # Update this to make sure those chcunks were in fact added.
-    if len(new_chunks):
-        # print(f"Adding {len(new_chunks)} new documents to database")
-        new_chunk_ids = [chunk.metadata["id"] for chunk in new_chunks]
-        db.add_documents(new_chunks, ids = new_chunk_ids)
+    if not new_chunks:
+        logger.info(f"No new chunks to add to {hr_collection}")
+        return
+    
+    logger.info(f"Adding {len(new_chunks)} new chunks | Collection: {hr_collection} | Batches = {batch_size} ")
 
-    # else:
-    #     print("No new documents to add")
+    for i in range(0, len(new_chunks), batch_size):
+        batch = new_chunks[i: i + batch_size]
+        batch_ids = [c.metadata["id"] for c in batch]
+        try:
+            db.add_documents(batch, ids = batch_ids)
+            logger.info(f"Batch {i // batch_size + 1}/{-(-len(new_chunks)//batch_size)} complete | {min(i + batch_size, len(new_chunks))}/{len(new_chunks)} chunks added")
+        except Exception as e:
+            logger.error(f"Falied on batch {i//batch_size + 1} | {type(e)} | {e}")
+            raise
 
 
-def _metadata_IDs(chunks, *args, **kwargs):
+def _metadata_IDs(chunks, tags: list | None = None, *args, **kwargs):
     '''
     Assigns a new metadata ID to the item. The metadata tag is: source document: page: chunk index. The chunk index for each document goes from [0, max chunks].
     
@@ -384,39 +409,138 @@ def _metadata_IDs(chunks, *args, **kwargs):
         last_page_id = current_page_id
 
         chunk.metadata["id"] = chunk_id
+        # for tag in tags:
+        #     pass
 
     return chunks    
 
 
-# Because I'm going to change this to query routing, I'm debating how much this needs to be logged right now.
-# Get response time for the query. Time it up to the last for loop
-def query_rag(message: str, history: list, collection: str, model: str, embeddings: str, 
-              *args, **kwargs): #type: ignore
+def _merge_retrievers(retrievers):
     '''
-    Streaming RAG query. Yields response chunks.
-    Uses a single prompt that retrieves context but instructs the LLM
-    to ignore it if irrelevant — handles both rules and general questions.
-
-    Part of RAG Query
+    MergeRetrievers is a legacy piece of code, and the new one is apparently also flagged to be moved to legacy. So,
+    because I need to merge a bunch of responses into one, this is the custom way to do this.
     '''
-    # Check how many responses are returned.
-    retriever = _get_retriever(collection, embeddings)
-    llm = ChatOllama(model=model)
+    def retrieve(query: str):
+        seen = set()
+        merged = []
+        for retriever in retrievers:
+            docs = retriever.invoke(query)
+            for doc in docs:
+                if doc.page_content not in seen:
+                    seen.add(doc.page_content)
+                    merged.append(doc)
+        return merged
+    
+    return RunnableLambda(retrieve)
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", """
+# # Because I'm going to change this to query routing, I'm debating how much this needs to be logged right now.
+# # Get response time for the query. Time it up to the last for loop
+# def query_rag(message: str, history: list, collection: str, model: str, embeddings: str, 
+#               *args, **kwargs): #type: ignore
+#     '''
+#     Streaming RAG query. Yields response chunks.
+#     Uses a single prompt that retrieves context but instructs the LLM
+#     to ignore it if irrelevant — handles both rules and general questions.
+
+#     Part of RAG Query
+#     '''
+#     # Check how many responses are returned.
+#     retriever = _get_retriever(collection, embeddings)
+#     llm = ChatOllama(model=model)
+
+#     prompt = ChatPromptTemplate.from_messages([
+#         ("system", """
          
-         Rulebook context has been retrieved and is provided below. Use it if it is 
-         relevant to the question. If it is not relevant to the question, ignore it 
-         entirely and answer conversationally from your own knowledge, but state 
-         that you cannot find relevant information from the retrieved database.
+#          Rulebook context has been retrieved and is provided below. Use it if it is 
+#          relevant to the question. If it is not relevant to the question, ignore it 
+#          entirely and answer conversationally from your own knowledge, but state 
+#          that you cannot find relevant information from the retrieved database.
 
-        Retrieved context:
-        {context}"""),
-        MessagesPlaceholder(variable_name="history"),
-        ("human", "{question}")
-        ])
+#         Retrieved context:
+#         {context}"""),
+#         MessagesPlaceholder(variable_name="history"),
+#         ("human", "{question}")
+#         ])
 
+#     lc_history = _gradio_history_to_langchain(history)
+
+#     chain = (
+#         {
+#             "context": (lambda x: x["question"]) | retriever | _format_docs,
+#             "question": lambda x: x["question"],
+#             "history": lambda x: x["history"]
+#         }
+#         | prompt
+#         | llm
+#         | StrOutputParser()
+#     )
+
+#     response = ""
+#     for chunk in chain.stream({"question": message, "history": lc_history}):
+#         response += chunk
+#         yield response
+
+
+def query_rag_routed(message: str, history: list, lang_model: str, embed_model: str, collection: str | None = None, *args, **kwargs):
+    '''
+    Query routes the collection questions.
+    '''
+    llm = ChatOllama(model = lang_model)
+
+    classifier_prompt = ChatPromptTemplate.from_messages([
+        ("system", """Classify the following question into one of two categories:
+         - RULES: quesitons about game mechanics, rules, tables, stats, spells, weapons, monsters, characters, abilities, equipment, or anything found in a source or rulebook or personal notes.
+         - General: everything else.
+         Respond with only RULES or GENERAL.
+         """), ("human", "{question}")
+    ])
+
+    classification = (classifier_prompt | llm | StrOutputParser()).invoke({"question": message}).strip().upper()
+
+    if classification == "General":
+        logger.info("Question classified as GENERAL")
+        yield from _direct_response(message, history, lang_model)
+        return
+    
+    logger.info("Question classified as RULES")
+    
+    if collection: collections_to_search = [collection]
+    else: collections_to_search = find_collections()
+
+    if not collections_to_search:
+        logger.info("No collections came back, answering as GENERAL")
+        yield from _direct_response(message, history, lang_model)
+        return
+    
+    if len(collections_to_search) == 1: 
+        retriever = _get_retriever(collections_to_search[0], embed_model)
+    else:
+        retrievers = [_get_retriever(c, embed_model, k = 3) for c in collections_to_search]
+        retriever = _merge_retrievers(retrievers)
+    
+    yield from _rag_response(message, history, lang_model, retriever)
+
+
+def _rag_response(message, history, lang_model, retriever):
+    '''
+    Shared RAG generation logic. Seperated so both query_rag and query_rag_routed can use it without duplication.
+
+    However query_rag is not going to be used in the future, so this is instead a nice way to apply logging logic and find errros.
+    '''
+    llm = ChatOllama(model = lang_model)
+
+    prompt = ChatPromptTemplate.from_messages([("system", """
+                                                Rulebook context has been retrieved and is provided below. Use it if it is relevant to the question. 
+                                                If it is not relevant to the question, ignore it entirely and answer conversationally from your own 
+                                                knowledge, but state that you cannot find relevant information from the retrieved database.
+                                                
+                                                Retrieved context:
+                                                {context}
+                                                """),
+                                                MessagesPlaceholder(variable_name = "history"),
+                                                ("human", "{question}")
+                                                ])
+    
     lc_history = _gradio_history_to_langchain(history)
 
     chain = (
@@ -430,10 +554,12 @@ def query_rag(message: str, history: list, collection: str, model: str, embeddin
         | StrOutputParser()
     )
 
-    response = ""
-    for chunk in chain.stream({"question": message, "history": lc_history}):
+    reponse = ""
+
+    for chunk in chunk.stream({"question": message, "history": lc_history}):
         response += chunk
-        yield response
+        yield reponse
 
 
-logger.info(f"Finished reading RAG Pipeline file")
+
+logger.info(f"Finished reading RAG Pipeline file @ (time to be implemented)")

@@ -12,7 +12,7 @@ log_dir.mkdir(parents = True, exist_ok = True)
     
 # logger = logging.getLogger(__name__)
     
-logger = setup_logs(log_dir / f"Technomancer__{timestamp}.log")
+logger = setup_logs(log_dir / f"Technomancer__{timestamp}.log", level = logging.INFO)
 # logger_debug = setup_logs(log_dir / f"Technomancer_DEBUG_{timestamp}.log")
 
 
