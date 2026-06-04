@@ -1,6 +1,10 @@
+6/4/26
+-Work on creating database with many different files
+-interact with that database
+-add metadata tags to the files at ingestion.
 6/3/26
--Work on logging of RAG.
--Test various upload documents
+-Work on logging of RAG - done
+-Test various upload documents - work on more tomorrow
 6/2/26
 -Finish logging system to at least 50% - Done. Foundation set, can be updated as more things are added.
 6/1/26

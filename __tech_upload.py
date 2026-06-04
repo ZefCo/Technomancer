@@ -9,12 +9,12 @@ from __rag_pipeline import load_documents, find_documents, delete_document, crea
 from __tech_fn import update_drop_down, append_state_list, update_textbox, change_state, change_state_list, update_slider, change_state_per
 
 
-
 def create_upload(db_paths, embed_models, rule_systems, tags):
     '''
     '''
     chunk_overlap_s = gr.State(value = 50)
     chunk_size_s = gr.State(value = 512)
+    chunk_batches_s = gr.State(value = 50)
     default_text_message_s = gr.State(value = "Type in a new rule system/collection")
     documents_listed_s = gr.State([])
     document_tags_s = gr.State(value = [])
@@ -37,7 +37,7 @@ def create_upload(db_paths, embed_models, rule_systems, tags):
             with gr.Column(variant = "panel"):
                 gr.Markdown("Supported file types: .pdf, .docx, .txt, .csv, .epub")
                 upload_file_space = gr.File(label = f"Drag and drop a file")
-                # upload_status_box = gr.Markdown(upload_status_s)  # need to think about how to handle this
+                upload_status_box = gr.Textbox(label  = "Upload Status", interactive = False, value = "No file uploaded yet")  # need to think about how to handle this
             
             with gr.Column(variant = "panel"):
             
@@ -51,9 +51,10 @@ def create_upload(db_paths, embed_models, rule_systems, tags):
                     add_doc_tags = gr.Button(value = "Add Tags", scale = 1, size = "lg")
 
             with gr.Column(variant = "panel"):
-                gr.Markdown("While this can go as high as 4,000 chunks, consider staying within 128-1024, with overlap being about 0.10 - 0.20 of the chunk size")
+                gr.Markdown("While this can go as high as 4,000 chunks, consider staying within 128-1024, with overlap being about 0.10 - 0.20 of the chunk size. Chunk batches is for how many chunks will be added at a time. Due to the size of the books, there can be several thousand chunks that are needed to be loaded.")
                 c_size_slide = gr.Slider(minimum = 10, maximum = 4_000, value = 512, label = "Chunk Size", interactive = True)
                 c_overlap_slide = gr.Slider(minimum = 1, maximum = 2_000, value = 50, label = "Chunk Overlap", interactive = True)
+                c_batch_slide = gr.Slider(minimum = 1, maximum = 4_000, value = 50, label = "Chunk Batches", interactive = True)
 
         with gr.Row():
 
@@ -97,13 +98,13 @@ def create_upload(db_paths, embed_models, rule_systems, tags):
         # Look into how to log this information.
         available_rule_systems_dd.select(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_listed_s]).then(fn = update_drop_down, inputs = [documents_listed_s], outputs = [available_documents_dd])
         
-        upload_file_space.upload(fn = load_documents, inputs = [upload_file_space, rule_systems_dd, chunk_size_s, chunk_overlap_s, eb_model_dd], outputs = [upload_status_s]).then(fn = append_state_list, inputs = [rule_systems, rule_systems_dd], outputs = [rule_systems])
+        upload_file_space.upload(fn = load_documents, inputs = [upload_file_space, rule_systems_dd, chunk_size_s, chunk_overlap_s, eb_model_dd], outputs = [upload_status_box]).then(fn = append_state_list, inputs = [rule_systems, rule_systems_dd], outputs = [rule_systems])
 
         delete_document_btn.click(fn = delete_document, inputs = [available_rule_systems_dd, available_documents_dd]).then(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_listed_s]).then(fn = update_drop_down, inputs = [documents_listed_s], outputs = [available_documents_dd])
         
         add_doc_tags.click(fn = change_state_list, inputs = [document_tags_dd], outputs = [document_tags_s])
 
-    return upload, {"available_collections": available_rule_systems_dd, "rule_system": rule_systems_dd, "eb_model": eb_model_dd, "list_of_db": list_of_db_dd}
+    return upload, {"available_collections": available_rule_systems_dd, "rule_system": rule_systems_dd, "eb_model": eb_model_dd, "list_of_db": list_of_db_dd, "upload_status": upload_status_box}
 
 
 if __name__ in "__main__":
@@ -122,4 +123,4 @@ if __name__ in "__main__":
 else:
     logger = logging.getLogger(__name__)
     print("Rendered Upload Tab")
-    logger.info("Rendered Upload Tab")
+    logger.info("Rendered Upload Tab @ (time to be implemented)")

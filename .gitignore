@@ -9,6 +9,7 @@
 
 # This folder will be for uploading documents, a way to do it without the UI, and for testing.
 /Folder_of_Holding
+/Test_Books
 
 # want to ignore all vscode and pycache folders
 # the folders themselves are OK to upload, I just don't want the files in them.
