@@ -83,3 +83,4 @@ Check user message for know collection first during query                       
 reimplement deletion of documents                                                                  , rag   , 6/4/26 , High    ,
 Add user loggin                                                                                    , ui    , 6/4/26 , Low     ,
 Reinitialize document list after deletion of a document                                            , ui    , 6/4/26 , Low     ,
+Create new display branch seperate from master                                                     , git   , 6/4/26 , Low     ,
