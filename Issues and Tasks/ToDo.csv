@@ -84,3 +84,4 @@ reimplement deletion of documents                                               
 Add user loggin                                                                                    , ui    , 6/4/26 , Low     ,
 Reinitialize document list after deletion of a document                                            , ui    , 6/4/26 , Low     ,
 Create new display branch seperate from master                                                     , git   , 6/4/26 , Low     ,
+Add textbox for embedding and language models being used and update when they change               , ui    , 6/4/26 , Medium  , 
