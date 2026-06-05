@@ -55,8 +55,8 @@ def change_state_list(state_list):
     return state_list
 
 
-def change_state(new_state, old_state = None, 
-                 log_info = False, state_name = "State"):
+def change_state(new_state: str, old_state: str = None | str, 
+                 log_info: bool = False, state_name: str = "State"):
     '''
     Changes the state.
     '''
@@ -189,6 +189,13 @@ def import_setting(setting_file):
     return settings
 
 
+def list_length(lst):
+    '''
+    For returning the length of a list. It's really used just to count the number of documents in the collection.
+    '''
+    return len(lst) if lst else 0
+
+
 def load_paths():
     '''
     Loads all the Database paths the user has saved in the settings file.
@@ -282,7 +289,7 @@ def technomancer_response(chat_history, lang_model, embed_model, *args, **kwargs
 #     return chunk
 
 
-def update_drop_down(choices, choice: str | None = None):
+def update_drop_down(choices: list, choice: str | None = None):
     '''
     Updates a drop down menu. Useful for rule systems, documents, and model choices
     '''

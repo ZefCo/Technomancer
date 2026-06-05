@@ -95,7 +95,7 @@ def create_collection(collection: str):
         logger.info(f"Successfully created collection in database")
 
 
-def delete_document(collection, metadata):
+def delete_document(hr_collection, metadata):
     '''
     Deletes a document in the database. Does so by finding everything with matching metadata and deleting it. Searches on the source of the data, which is hopefully reliable.
 
@@ -103,13 +103,17 @@ def delete_document(collection, metadata):
     '''
     client = _get_client()
     
-    collection = _clean_collection(collection)
-    local_collection = client.get_collection(str(collection))
+    ascii_collection = _clean_collection(hr_collection)
+    logger.info(f"Deleting {metadata} | {hr_collection} | {ascii_collection}")
+    local_ascii_collection = client.get_collection(str(ascii_collection))
     
     try:
-        local_collection.delete(where = {"Title": metadata})
+        local_ascii_collection.delete(where = {"Title": metadata})
     except Exception as e:
-        logger.critical(f"Error deleting chunks for the document with metadata {metadata}")
+        logger.critical(f"Error deleting chunks for the document with metadata {metadata} | {hr_collection}")
+    else:
+        documents = find_documents(hr_collection)
+        logger.info(f"Documents left | {hr_collection} | {documents}")
 
 
 def _direct_response(message: str, history: list, lang_model: str):

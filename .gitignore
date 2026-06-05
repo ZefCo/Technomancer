@@ -28,6 +28,7 @@ UI_Testing/__pycache__
 # In case there are files I want to use locally but don't need to share on git
 /Misc
 /Other
+/Something
 
 # For testing and making interesting model personalities.
 /Personalities

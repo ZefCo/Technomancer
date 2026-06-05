@@ -1,3 +1,5 @@
 Issue,Cause,Date,Priority,Fixed
-Lack of payload when selecting drop down in Adv Setting Embed Models,Unknown,6/4/26,Low,
-Error thrown out when chunk size is less than 1,Chunk overlap thinks it's at 0,6/4/26,low,
+Lack of payload when selecting drop down in Adv Setting Embed Models,Unknown - have not been able to duplicate,6/4/26,Low,
+Error thrown out when chunk size is less than 1,Chunk size is not allowed to be less than 1 - is this really an issue?,6/4/26,Low,
+List being put into rule system drop down menu,Rule system state and drop downs were not properly updated,6/4/26,Medium,6/5/26
+Avatar for chatbots cannot be loaded,Gradio cannot resolve a tuple and its index,6/5/26,Low,
