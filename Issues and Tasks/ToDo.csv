@@ -52,7 +52,7 @@ Update Env Test to include proper links to the libraries needed                 
 Test docx ingestion                                                                                , rag   , 5/30/26, High    , 
 Test csv ingestion                                                                                 , rag   , 5/30/26, High    , 
 test txt ingestion                                                                                 , rag   , 5/30/26, High    , 
-Test epub ingestion                                                                                , rag   , 5/30/26, High    , 
+Test epub ingestion                                                                                , rag   , 5/30/26, High    , 6/4/26
 Add metadata tags for documents                                                                    , rag   , 5/29/26, High    , 
 Add metadata to documents after ingestion                                                          , rag   , 5/30/26, Medium  , 
 Change yaml to env files                                                                           , git   , 5/30/26, Low     , 
@@ -71,9 +71,15 @@ Create log file/error handeling if user accidentally deletes database while Tech
 Odd issues when selecting embed model - cannot duplicate?                                          , ui    , 6/4/26 , Low     , 
 Try uploading on multiple computers                                                                , rag   , 6/4/26 , Medium  , 6/4/26
 Try uploading with different embeddings to same database                                           , rag   , 6/4/26 , High    , 
-Try querying from database with wrong embedding                                                    , rag   , 6/4/26 , High    , 
+Try querying from database with wrong embedding                                                    , rag   , 6/4/26 , High    , 6/4/26
 Update Rule system list at both file upload and pressing enter on dd                               , ui    , 6/4/26 , High    , 6/4/26
 Share states across tabs with updates across tabs                                                  , ui    , 6/4/26 , High    , 6/4/26
 Find way to update and share rule system state across tabs                                         , ui    , 6/4/26 , Low     , 6/4/26
 Be able to query information in database                                                           , rag   , 6/3/26 , High    , 6/4/26
 Have technomancer cite sources                                                                     , rag   , 6/3/26 , Medium  , 
+Fix rule system drop down getting the whole list and not just one system                           , ui    , 6/4/26 , Medium  ,
+Add similarity score threshold for return query                                                    , rag   , 6/4/26 , Medium  ,
+Check user message for know collection first during query                                          , rag   , 6/4/26 , Medium  ,
+reimplement deletion of documents                                                                  , rag   , 6/4/26 , High    ,
+Add user loggin                                                                                    , ui    , 6/4/26 , Low     ,
+Reinitialize document list after deletion of a document                                            , ui    , 6/4/26 , Low     ,
