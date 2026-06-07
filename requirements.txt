@@ -20,6 +20,8 @@ langchain-text-splitters
     pip install langchain-text-splitters
 langchain-ollama
     pip install langchain-ollama
+langchain-unstructured
+    pip install langchain-unstructured
 ollama
     https://ollama.com/download (for Ollama server)
         Don't foreget to install a language model: https://ollama.com/library
