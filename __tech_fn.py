@@ -1,3 +1,4 @@
+from dotenv import load_dotenv
 import inspect
 import logging
 import pathlib
@@ -5,10 +6,10 @@ import pathlib
 cwd = pathlib.Path.cwd()
 logger = logging.getLogger(__name__)
 
-
 import gradio as gr
 
 # import ollama
+import os
 
 import re
 
@@ -196,6 +197,19 @@ def find_models():
 #                 yield response
 
 
+def import_evn_settings():
+    '''
+    Imports all the settings from the .env settings file.
+
+    This is in the testing phase. It's fairly straight forward, but the advantage of .yaml files is that they are easy to adjust and are human readable.
+    They can also be broken up. Should the .env files be broken up? Should they be kept together? Are they easy to shove into the states? Can they easily
+    be written to? Answer is probably yes to most of them.
+    '''
+    load_dotenv(str(cwd.parent / "Settings" / "SETTINGS.env"))
+
+    MY_ENV_TEST = os.getenv("AVATARS", None)
+
+
 def import_setting(setting_file):
     '''
     Import a settings file
@@ -291,10 +305,10 @@ def stop_command():
 
 
 def technomancer_response(chat_history, lang_model, embed_model,
-                          hr_collection: str | None = None, tags: list[str] | None = None,
+                          hr_collection: str | None = None, tags: list[str] | None = None, k: int = 10, score_threshold: float = 0.3,
                           *args, **kwargs):
     '''
-    This yields the chatbots response. Again, *args and **kwargs are not really needed, but are here *in case*
+    This yields the chatbots response. Again, *args and **kwargs are not really needed, nor used, because Gradio doesn't allow it.
     '''
     raw_user_msg = chat_history[-2]["content"]  # grab the content of the users message
     user_msg = _extract_content(raw_user_msg)
@@ -303,7 +317,8 @@ def technomancer_response(chat_history, lang_model, embed_model,
     from __rag_pipeline import query_rag_routed
     logger.info(f"Generating response | Lang Model {lang_model} | Embed Model {embed_model}")
     
-    for response in query_rag_routed(user_msg, chat_history[:-2], lang_model, embed_model, collection=hr_collection, tags=tags, *args, **kwargs):
+    # for response in query_rag_routed(user_msg, chat_history[:-2], lang_model, embed_model, collection=hr_collection, tags=tags, *args, **kwargs):
+    for response in query_rag_routed(user_msg, chat_history[:-2], lang_model, embed_model, collection=hr_collection, tags=tags, k = k, score_threshold = score_threshold):
         chat_history[-1]["content"] = response  # now the last item is the assistant placeholder
         yield chat_history
 
@@ -324,6 +339,13 @@ def update_drop_down(choices: list, choice: str | None = None):
     if choices and choice: return gr.Dropdown(choices = choices, value = choice)
     elif choices: return gr.Dropdown(choices = choices)
     else: return gr.Dropdown(choices = [])
+
+
+def update_number(value):
+    '''
+    Updates the number in the number box
+    '''
+    return gr.Number(value = value)
 
 
 def update_slider(value, percent = 1):

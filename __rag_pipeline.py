@@ -373,6 +373,8 @@ def _get_retriever(hr_collection: str, embed_model: str,
         search_kwargs["filter"] = filters[0]
     else:
         search_kwargs["filter"] = {"$and": filters}
+    
+    logger.info(f"k = {k} | score threshold = {score_threshold} (1 - {score_threshold} is used)")
 
     if score_threshold is not None:
         return db.as_retriever(search_type = "similarity_score_threshold",
@@ -646,7 +648,7 @@ def _merge_retrievers(retrievers):
 
 
 def query_rag_routed(message: str, history: list, lang_model: str, embed_model: str, 
-                     collection: str | None = None, tags: list[str] | None = None,
+                     collection: str | None = None, tags: list[str] | None = None, k: int = 10, score_threshold: float = 0.3,
                      *args, **kwargs):
     '''
     Query routes the collection questions.
@@ -684,9 +686,9 @@ def query_rag_routed(message: str, history: list, lang_model: str, embed_model: 
         return
     
     if len(collections_to_search) == 1:
-        retriever = _get_retriever(collections_to_search[0], embed_model, tags = tags)
+        retriever = _get_retriever(collections_to_search[0], embed_model, tags = tags, k = k, score_threshold = score_threshold)
     else:
-        retrievers = [_get_retriever(c, embed_model, tags = tags) for c in collections_to_search]
+        retrievers = [_get_retriever(c, embed_model, tags = tags, k = k, score_threshold = score_threshold) for c in collections_to_search]
         retriever = _merge_retrievers(retrievers)
     
     logger.info(f"Generating query | {lang_model} | {embed_model}")

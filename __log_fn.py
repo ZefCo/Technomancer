@@ -8,7 +8,7 @@ def setup_logs(log_file: pathlib.Path, level = logging.DEBUG):
     '''
 
     logging.basicConfig(level = level,
-                        format = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+                        format = "%(asctime)s | %(levelname)-8s | %(name)s | %(funcName)s | %(message)s",
                         handlers = [logging.FileHandler(log_file)])
 
 

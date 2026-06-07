@@ -14,10 +14,11 @@ from __rag_pipeline import (create_collection,
 from __states import (chunk_overlap_state, chunk_size_state, 
                       documents_list_state, 
                       embed_model_state, 
-                      named_chunkoverlap_state, name_chunksize_state, name_embed_state, name_rule_state, name_tags_state, 
+                      k_state,
+                      named_chunkoverlap_state, name_chunksize_state, name_embed_state, name_rule_state, 
                       percent_state, 
                       rule_system_state, rule_systems_list_state, 
-                      tags_list_state, true_state, 
+                      tags_list_state, true_state,
                       settings_path_tags_state,
                       upload_status_state)
 
@@ -59,13 +60,16 @@ def create_upload():
                 c_size_slide = gr.Slider(minimum = 10, maximum = 1_000, value = 512, label = "Chunk Size", interactive = True)
                 c_overlap_slide = gr.Slider(minimum = 1, maximum = 500, value = 50, label = "Chunk Overlap", interactive = True)
                 c_batch_slide = gr.Slider(minimum = 1, maximum = 200, value = 50, label = "Chunk Batches", interactive = True)
-                embed_textbox = gr.Textbox(label = "Embedding Model Being Used", value = "")
+                # embed_textbox = gr.Textbox(label = "Embedding Model Being Used", value = "")
 
             with gr.Column(variant = "panel"):
                 gr.Markdown("## File Upload")
 
                 gr.Markdown("Supported file types: .pdf, .docx, .txt, .csv")
-                selected_rule_system = gr.Textbox(label = "Add to rule system", interactive = False, value = "Select Rule system")
+                with gr.Column(variant = "compact"):
+                    with gr.Row():
+                        selected_rule_system = gr.Textbox(label = "Add to rule system (adjusted in Rule System & Tags column)", interactive = False, value = "Select Rule system")
+                        embed_textbox = gr.Textbox(label = "w/ Embedding Model: (adjusted in Advanced Settings)", interactive = False, value = "")
                 upload_file_space = gr.File(label = f"Drag and drop a file")
                 upload_status_box = gr.Textbox(label  = "Upload Status", interactive = False, value = "No file uploaded yet")
 
