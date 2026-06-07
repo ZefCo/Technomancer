@@ -35,3 +35,6 @@ UI_Testing/__pycache__
 
 # Because we don't want to upload the logs
 /Logs
+
+# I'm testing the use of .env files over .yaml files. I don't want to push the .env files yet.
+*.env

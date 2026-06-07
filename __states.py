@@ -1,11 +1,13 @@
 import logging
+from dotenv import load_dotenv
 import gradio as gr
+import os
 import pathlib
 from __rag_pipeline import find_collections
 from __tech_fn import import_setting, load_paths, load_tags, sort_models
+
 logger = logging.getLogger(__name__)
 logger.info(f"Reading States file @ (time to be implemented)")
-
 cwd = pathlib.Path.cwd()
 
 RULE_SYSTEMS = find_collections()  # this will be the various collections in the database.
@@ -37,6 +39,7 @@ embed_model_state = gr.State(value = EMBED_MODELS[0])
 # this is just to clear a drop down
 empty_list_state = gr.State(value = [])
 
+k_state: int = gr.State(value = 10)
 
 lang_models_list_state = gr.State(value = LANG_MODELS)
 lang_model_state = gr.State(value = LANG_MODELS[0])
@@ -44,9 +47,11 @@ lang_model_state = gr.State(value = LANG_MODELS[0])
 name_chunksize_state = gr.State(value = "Chunk Size")
 named_chunkoverlap_state = gr.State(value = "Chunk Overlap")
 name_embed_state = gr.State(value = "Embedding Model")
+name_k_state = gr.State(value = "K")
 name_lang_state = gr.State(value = "Language Model")
 name_rule_state = gr.State(value = "Rule System")
 name_tags_state: str = gr.State(value = "Metadata Tags")
+name_threshold_state = gr.State(value = "Cosine Similarity Threshold")
 
 overlap_name_state = gr.State(value = "Chunk Overlap")
 
@@ -59,6 +64,7 @@ rule_system_state = gr.State(value = RULE_SYSTEMS[0] if RULE_SYSTEMS else None)
 settings_path_tags_state: str = gr.State(value = "Tags.yaml")
 
 tags_list_state: list = gr.State(value = TAGS)
+threshold_state: float = gr.State(value = 0.3)
 
 upload_status_state = gr.State(value = "")
 
