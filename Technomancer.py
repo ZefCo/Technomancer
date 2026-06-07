@@ -20,7 +20,19 @@ import gradio as gr
 
 # from __rag_pipeline import find_collections, find_documents
 
-from __states import avatars_state, chunk_batches_state, chunk_overlap_state, chunk_size_state, db_paths_list_state, default_message_state, documents_list_state, embed_model_state, embed_models_list_state, empty_list_state, lang_model_state, lang_models_list_state, name_chunksize_state, name_embed_state, name_lang_state, name_rule_state, named_chunkoverlap_state, overlap_name_state, percent_state, rule_system_state, rule_systems_list_state, tags_list_state, true_state, upload_status_state, false_state
+from __states import (avatars_state, 
+                      chunk_batches_state, chunk_overlap_state, chunk_size_state, 
+                      db_paths_list_state, default_message_state, documents_list_state, 
+                      embed_model_state, embed_models_list_state, empty_list_state, 
+                      false_state, 
+                      lang_model_state, lang_models_list_state, 
+                      name_chunksize_state, name_embed_state, name_lang_state, name_rule_state, named_chunkoverlap_state, name_tags_state,
+                      overlap_name_state, 
+                      percent_state, 
+                      rule_system_state, rule_systems_list_state, 
+                      settings_path_tags_state, 
+                      tags_list_state, true_state, 
+                      upload_status_state)
 
 import __tech_about as tech_about
 from __tech_chat import create_chat
@@ -30,7 +42,7 @@ from __tech_upload import create_upload
 
 def launch_technomancer():
 
-    with gr.Blocks(title = "Technomancer v0.5") as Technomancer:
+    with gr.Blocks(title = "Technomancer v1.0") as Technomancer:
         # This is meant to better share states
         avatars_state.render()
         chunk_batches_state.render()
@@ -57,6 +69,8 @@ def launch_technomancer():
         true_state.render()
         upload_status_state.render()
         false_state.render()
+        name_tags_state.render()
+        settings_path_tags_state.render()
 
         # because of how many state variables I'm juggeling, I'm going to keep them alphabitized.
         with gr.Tabs():
@@ -84,8 +98,8 @@ def launch_technomancer():
                     logger.critical(f"Something went wrong when starting Upload Tab | Error type {type(e)} | {e}")
                     raise RuntimeError("Cannot load Upload Tab")
 
-        upload_tab.select(fn = update_drop_down, inputs = [embed_models_list_state, embed_model_state], outputs = [upload_components["embed_models_dd"]]).then(fn = update_drop_down, inputs = [db_paths_list_state], outputs = [upload_components["list_of_db_dd"]]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [upload_components["rule_systems_dd_1"]]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [upload_components["rule_systems_dd_2"]]).then(fn = update_textbox, inputs = [embed_model_state], outputs = [upload_components["embed_textbox"]])
-        chat_tab.select(fn = update_drop_down, inputs = [embed_models_list_state, embed_model_state], outputs = [chat_components["embed_models_dd"]]).then(fn = update_drop_down, inputs = [lang_models_list_state, lang_model_state], outputs = [chat_components["lang_models_dd"]]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [chat_components["rule_systems_dd"]]).then(fn = update_textbox, inputs = [lang_model_state], outputs = [chat_components["lang_textbox"]]).then(fn = update_textbox, inputs = [embed_model_state], outputs = [chat_components["embed_textbox"]])
+        upload_tab.select(fn = update_drop_down, inputs = [embed_models_list_state, embed_model_state], outputs = [upload_components["embed_models_dd"]]).then(fn = update_drop_down, inputs = [db_paths_list_state], outputs = [upload_components["list_of_db_dd"]]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [upload_components["rule_systems_dd_1"]]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [upload_components["rule_systems_dd_2"]]).then(fn = update_textbox, inputs = [embed_model_state], outputs = [upload_components["embed_textbox"]]).then(fn = update_drop_down, inputs = [tags_list_state], outputs = [upload_components["metadata_tags_dd"]])
+        chat_tab.select(fn = update_drop_down, inputs = [embed_models_list_state, embed_model_state], outputs = [chat_components["embed_models_dd"]]).then(fn = update_drop_down, inputs = [lang_models_list_state, lang_model_state], outputs = [chat_components["lang_models_dd"]]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [chat_components["rule_systems_dd"]]).then(fn = update_textbox, inputs = [lang_model_state], outputs = [chat_components["lang_textbox"]]).then(fn = update_textbox, inputs = [embed_model_state], outputs = [chat_components["embed_textbox"]]).then(fn = update_drop_down, inputs = [tags_list_state], outputs = [chat_components["metadata_tags_dd"]])
 
 
     return Technomancer
