@@ -1,7 +1,9 @@
+6/6/26
+-Add tags from llm message - done
 6/5/26
--Add metadata tages to files at ingestion
--Add metadata tags after ingestions
--Add metadata tags to search
+-Add metadata tages to files at ingestion - done
+-Add metadata tags after ingestions - late, but done
+-Add metadata tags to search - done
 6/4/26
 -Work on creating database with many different files - done
 -interact with that database - done

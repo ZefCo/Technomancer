@@ -4,11 +4,28 @@ import logging
 
 import gradio as gr
 
-from __rag_pipeline import load_documents, find_documents, delete_document, create_collection
+from __rag_pipeline import (create_collection, 
+                            delete_document, delete_collection, 
+                            find_collections, find_documents,
+                            get_metadata,
+                            load_documents,
+                            update_metadata)
 
-from __states import chunk_batches_state, chunk_overlap_state, chunk_size_state, documents_list_state, embed_model_state, named_chunkoverlap_state, name_chunksize_state, name_embed_state, name_rule_state, percent_state, rule_system_state, rule_systems_list_state, tags_list_state, true_state, upload_status_state
+from __states import (chunk_overlap_state, chunk_size_state, 
+                      documents_list_state, 
+                      embed_model_state, 
+                      named_chunkoverlap_state, name_chunksize_state, name_embed_state, name_rule_state, name_tags_state, 
+                      percent_state, 
+                      rule_system_state, rule_systems_list_state, 
+                      tags_list_state, true_state, 
+                      settings_path_tags_state,
+                      upload_status_state)
 
-from __tech_fn import update_drop_down, append_state_list, change_state, change_state_list, update_slider, update_textbox, list_length
+from __tech_fn import (append_state_list, 
+                       change_state, change_state_list, 
+                       export_tags, 
+                       list_length, 
+                       update_slider, update_textbox,  update_drop_down)
 
 
 def create_upload():
@@ -23,7 +40,7 @@ def create_upload():
             
                 # with gr.Row():
                 gr.Markdown("## Rule System & Tags")
-                gr.Markdown("All documents need to be added to a rule system, a group that the document can belong to. To create a rule system group, select from or type into the dropdown menu. Tags can be added to any document, which will make searching those documents with Technomancer easier. If none is selected, the document will be added to 'Generic.'")
+                gr.Markdown("All documents need to be added to a rule system, a group that the document can belong to. To create a rule system group, select from or type into the dropdown menu. Tags can be added to any document, which will make searching those documents with Technomancer easier. The Save Tags button exports the tags to an external file, which loads them later. To delete tags, they are saved in the Settings folder in the Tags.yaml file: simple remove the lines of tags you don't want nor need. Alternativly, add to that file as you wish.")
                 with gr.Column(variant = "panel"):
                     with gr.Row():
                         rule_systems_dd = gr.Dropdown(label = "Rule System to Upload to (Required)", choices = [], interactive = True, allow_custom_value = True, scale = 3)
@@ -32,16 +49,16 @@ def create_upload():
                     # new_rule_system = gr.Textbox(label = None, submit_btn = True, placeholder = "Type in a new rule system/collection")
                 
                 with gr.Row():
-                    document_tags_dd = gr.Dropdown(choices = ["NPCs", "Lore", "Optional", "Sci Fi", "Fantasy"], label = "Tags to organize documents (not implemented yet)", multiselect = True, allow_custom_value = True, scale = 2)
-                    add_doc_tags = gr.Button(value = "Add Tags", scale = 1, size = "lg")
+                    document_tags_dd = gr.Dropdown(choices = [], label = "Tags to organize documents (not implemented yet)", multiselect = True, allow_custom_value = True, scale = 5, interactive = True)
+                    save_tags = gr.Button(value = "Save Tags", scale = 1)
 
             with gr.Column(variant = "panel"):
                 gr.Markdown("## Chunks")
 
-                gr.Markdown("While this can go as high as 4,000 chunks, consider staying within 128-1024, with overlap being about 0.10 - 0.20 of the chunk size. Chunk batches is for how many chunks will be added at a time. Due to the size of the books, there can be several thousand chunks that are needed to be loaded.")
-                c_size_slide = gr.Slider(minimum = 10, maximum = 4_000, value = 512, label = "Chunk Size", interactive = True)
-                c_overlap_slide = gr.Slider(minimum = 1, maximum = 2_000, value = 50, label = "Chunk Overlap", interactive = True)
-                c_batch_slide = gr.Slider(minimum = 1, maximum = 4_000, value = 50, label = "Chunk Batches", interactive = True)
+                gr.Markdown("While this can go as high as 1,000 chunks, consider staying below 512, with overlap being about 0.10 - 0.20 of the chunk size. Chunk batches is for how many chunks will be added at a time. Due to the size of the books, there can be several thousand chunks that are needed to be loaded.")
+                c_size_slide = gr.Slider(minimum = 10, maximum = 1_000, value = 512, label = "Chunk Size", interactive = True)
+                c_overlap_slide = gr.Slider(minimum = 1, maximum = 500, value = 50, label = "Chunk Overlap", interactive = True)
+                c_batch_slide = gr.Slider(minimum = 1, maximum = 200, value = 50, label = "Chunk Batches", interactive = True)
                 embed_textbox = gr.Textbox(label = "Embedding Model Being Used", value = "")
 
             with gr.Column(variant = "panel"):
@@ -59,21 +76,25 @@ def create_upload():
                 with gr.Accordion(label = "Manage Documents", open = False) as man_DBoH_acc:
 
                     with gr.Row():
-                        gr.Markdown("# Note on Deletion:\nThis deletes all things based on the file name of the book. If the book name is close enough to [an]other book[s], it is possible that the other book[s] will be delete too! Check to make sure that the books you want to stay in the database are in fact still there!")
+                        gr.Markdown("Note on Deletion: This deletes all things based on the file name of the book. If the book name is close enough to [an]other book[s], it is possible that the other book[s] will be delete too! Check to make sure that the books you want to stay in the database are in fact still there!")
 
                     with gr.Row():
-                        with gr.Column(variant = "panel"): 
-                            with gr.Row():
-                                available_rule_systems_dd = gr.Dropdown(choices = [], label = "Choose Collection", interactive = True, scale = 10)
-                                available_documents_textbox = gr.Textbox(label = "Docs Found", value = "", scale = 1)
+                            available_rule_systems_dd = gr.Dropdown(choices = [], label = "Choose Collection", interactive = True, scale = 10)
+                            available_documents_textbox = gr.Textbox(label = "Docs Found", value = "", scale = 1)
 
-                        with gr.Column(variant = "panel"):
-                            available_documents_dd = gr.Dropdown(choices = [], label = "List of available documents in selected collection", interactive = True)
+                            available_documents_dd = gr.Dropdown(choices = [], label = "List of available documents in selected collection", interactive = True, scale = 15)
+
+                            delete_document_btn = gr.Button(value = "Delete Selected Document", scale = 1)
 
                     with gr.Row():
-                        clear_collection_btn = gr.Button(value = "Removes Rule System (not yet implemented)")
-                        delete_document_btn = gr.Button(value = "Delete Selected Document")
-                    
+                        more_metadata_dd = gr.Dropdown(label = "Tags on current document, select additional tags. This does not update the master list, only the document selected.", choices = [], interactive = True, multiselect = True, scale = 15, allow_custom_value = True)
+                        more_metadata_btn = gr.Button(value = "Add Metadata")
+
+                    with gr.Accordion(label = "Delete Entire Rule System", open = False):
+                        gr.Markdown("This will delete the entire rule system, along with all books and documents associated with it. It *cannot* be undone.\nYou can Remove a given rule set, clearing out the entire set of documents!\nTo delete the entire database: you must manually delete it from your system. Yes it is possible to add that functionality here, but because no one wants to accidentally delete their database, that has to be done manually.")
+                        del_collection_btn = gr.Button(value = "Removes Rule System (The Nuclear Option)")
+                        # clear_collection_btn = gr.Button(value = "Clears a Rule System of all documents (empties rule system - not yet implemented)")
+                        # del_everything_btn = gr.Button(value = "Reset entire database (the BIGGER red button)")
                 
                 with gr.Accordion(label = "Advanced Settings", open = False) as adv_DBoH_acc:
                 
@@ -91,24 +112,31 @@ def create_upload():
                             gr.Markdown("Reserved for other options. Not sure what they are.")
                 
         # add_doc_tags.click(fn = change_state_list, inputs = [document_tags_dd], outputs = [document_tags_s])
-        add_doc_tags.click(fn = change_state_list, inputs = [document_tags_dd], outputs = [tags_list_state])
+        # add_doc_tags.click(fn = change_state_list, inputs = [document_tags_dd], outputs = [tags_list_state])
 
         available_rule_systems_dd.select(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_list_state]).then(fn = update_drop_down, inputs = [documents_list_state], outputs = [available_documents_dd]).then(fn = list_length, inputs = [documents_list_state], outputs = [available_documents_textbox])
-
+        available_documents_dd.select(fn = get_metadata, inputs = [available_rule_systems_dd, available_documents_dd], outputs = [more_metadata_dd])
+        
         c_size_slide.change(fn = change_state, inputs = [c_size_slide, chunk_size_state, true_state, name_chunksize_state], outputs = [chunk_size_state]).then(fn = update_slider, inputs = [chunk_size_state, percent_state], outputs = [c_overlap_slide]).then(fn = change_state, inputs = [c_overlap_slide, chunk_overlap_state, true_state, named_chunkoverlap_state], outputs = [chunk_overlap_state])  # This might not work. I'm not confident it will.
         c_overlap_slide.change(fn = change_state, inputs = [c_overlap_slide, chunk_overlap_state, true_state, named_chunkoverlap_state], outputs = [chunk_overlap_state])  # this used to update both the chunk size and overlap. Now this just updates the overlap.
 
+        del_collection_btn.click(fn = delete_collection, inputs = [available_rule_systems_dd]).then(fn = find_collections, outputs = [rule_systems_list_state]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [rule_systems_dd]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [available_rule_systems_dd]).then(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_list_state]).then(fn = update_drop_down, inputs = [documents_list_state], outputs = [available_documents_dd]).then(fn = list_length, inputs = [documents_list_state], outputs = [available_documents_textbox])
         delete_document_btn.click(fn = delete_document, inputs = [available_rule_systems_dd, available_documents_dd]).then(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_list_state]).then(fn = update_drop_down, inputs = [documents_list_state], outputs = [available_documents_dd])
-        
+        # del_everything_btn.click(fn = delete_collection, inputs = [available_rule_systems_dd, true_state]).then(fn = find_collections, outputs = [rule_system_state]).then(fn = update_drop_down, inputs = [rule_system_state], outputs = [rule_systems_dd]).then(fn = update_drop_down, inputs = [rule_system_state], outputs = [available_documents_dd])
+
         eb_model_dd.select(fn = change_state, inputs = [eb_model_dd, embed_model_state, true_state, name_embed_state], outputs = [embed_model_state]).then(fn = update_textbox, inputs = [embed_model_state], outputs = [embed_textbox])
+
+        more_metadata_btn.click(fn = update_metadata, inputs = [available_rule_systems_dd, available_documents_dd, more_metadata_dd])
 
         rule_system_add_btn.click(fn = change_state, inputs = [rule_systems_dd, rule_system_state, true_state, name_rule_state], outputs = [rule_system_state]).then(fn = create_collection, inputs = [rule_system_state]).then(fn = append_state_list, inputs = [rule_systems_list_state, rule_system_state], outputs = [rule_systems_list_state]).then(fn = update_drop_down, inputs = [rule_systems_list_state, rule_system_state], outputs = [rule_systems_dd]).then(fn = update_drop_down, inputs = [rule_systems_list_state, rule_system_state], outputs = [available_rule_systems_dd]).then(update_textbox, inputs = [rule_system_state], outputs = [selected_rule_system])
 
         rule_systems_dd.select(fn = change_state, inputs = [rule_systems_dd, rule_system_state, true_state, name_rule_state], outputs = [rule_system_state]).then(fn = update_textbox, inputs = [rule_system_state], outputs = [selected_rule_system])
+        
+        save_tags.click(fn = append_state_list, inputs = [tags_list_state, document_tags_dd], outputs = [tags_list_state]).then(fn = update_drop_down, inputs = [tags_list_state], outputs = [document_tags_dd]).then(fn = export_tags, inputs = [tags_list_state])
 
-        upload_file_space.upload(fn = append_state_list, inputs = [rule_systems_list_state, rule_systems_dd], outputs = [rule_systems_list_state]).then(fn = change_state_list, inputs = [rule_systems_list_state], outputs = [rule_systems_dd]).then(fn = change_state_list, inputs = [rule_systems_list_state], outputs = available_rule_systems_dd).then(fn = load_documents, inputs = [upload_file_space, rule_system_state, chunk_size_state, chunk_overlap_state, eb_model_dd], outputs = [upload_status_box])
+        upload_file_space.upload(fn = change_state, inputs = [rule_systems_dd], outputs = [rule_system_state]).then(fn = append_state_list, inputs = [rule_systems_list_state, rule_system_state], outputs = [rule_systems_list_state]).then(fn = update_drop_down, inputs = [rule_systems_list_state, rule_system_state], outputs = [rule_systems_dd]).then(fn = update_drop_down, inputs = [rule_systems_list_state, rule_system_state], outputs = available_rule_systems_dd).then(fn = load_documents, inputs = [upload_file_space, rule_system_state, chunk_size_state, chunk_overlap_state, eb_model_dd, document_tags_dd], outputs = [upload_status_box])
 
-    return upload, {"embed_models_dd": eb_model_dd, "embed_textbox": embed_textbox, "list_of_db_dd": list_of_db_dd, "rule_systems_dd_1": available_rule_systems_dd, "rule_systems_dd_2": rule_systems_dd, "upload_status_box": upload_status_box}
+    return upload, {"embed_models_dd": eb_model_dd, "embed_textbox": embed_textbox, "list_of_db_dd": list_of_db_dd, "rule_systems_dd_1": available_rule_systems_dd, "rule_systems_dd_2": rule_systems_dd, "metadata_tags_dd": document_tags_dd, "upload_status_box": upload_status_box}
     # return upload
 
 
@@ -116,7 +144,7 @@ if __name__ in "__main__":
     from datetime import datetime
     import pathlib
 
-    cwd = pathlib.Path.cwd()
+    cwd = pathlib.Path.cwd()    
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")    
 
     log_dir = cwd / "Logs"

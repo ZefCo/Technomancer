@@ -16,7 +16,7 @@ IMAGES = import_setting(cwd / "Settings" / "AvatarImages.yaml")
 
 # Images Avatars
 avatars_state = gr.State(value = [IMAGES["user"], IMAGES["bot"]])
-logger.info(f"Avatar state paths | {avatars_state}")
+# logger.info(f"Avatar state paths | {avatars_state}")
 
 # Chunk sizes
 chunk_batches_state = gr.State(value = 50)
@@ -46,6 +46,7 @@ named_chunkoverlap_state = gr.State(value = "Chunk Overlap")
 name_embed_state = gr.State(value = "Embedding Model")
 name_lang_state = gr.State(value = "Language Model")
 name_rule_state = gr.State(value = "Rule System")
+name_tags_state: str = gr.State(value = "Metadata Tags")
 
 overlap_name_state = gr.State(value = "Chunk Overlap")
 
@@ -53,9 +54,11 @@ percent_state = gr.State(value = 0.1)
 
 rule_systems_list_state = gr.State(value = RULE_SYSTEMS)
 rule_system_state = gr.State(value = RULE_SYSTEMS[0] if RULE_SYSTEMS else None)
-logger.info(f"Rule System State | {rule_system_state}")
+# logger.info(f"Rule System State | {rule_system_state}")
 
-tags_list_state = gr.State(value = TAGS)
+settings_path_tags_state: str = gr.State(value = "Tags.yaml")
+
+tags_list_state: list = gr.State(value = TAGS)
 
 upload_status_state = gr.State(value = "")
 

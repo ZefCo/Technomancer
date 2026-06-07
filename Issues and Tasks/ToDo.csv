@@ -53,8 +53,8 @@ Test docx ingestion                                                             
 Test csv ingestion                                                                                 , rag   , 5/30/26, High    , 
 test txt ingestion                                                                                 , rag   , 5/30/26, High    , 
 Test epub ingestion                                                                                , rag   , 5/30/26, High    , 6/4/26
-Add metadata tags for documents                                                                    , rag   , 5/29/26, High    , 
-Add metadata to documents after ingestion                                                          , rag   , 5/30/26, Medium  , 
+Add metadata tags for documents                                                                    , rag   , 5/29/26, High    , 6/5/26
+Add metadata to documents after ingestion                                                          , rag   , 5/30/26, Medium  , 6/6/26
 Change yaml to env files                                                                           , git   , 5/30/26, Low     , 
 Add advanced features to upload tab                                                                , ui    , 5/31/26, Medium  , 5/31/26
 Make paths to additional databases optional                                                        , rag   , 5/31/26, Medium  , 5/31/26
@@ -66,20 +66,20 @@ Have log files route to specific files based on function call                   
 Update README.md with more complete instructions on how to install                                 , git   , 6/3/26 , Medium  , 6/3/26
 Find out why documents are no longer loading to database                                           , rag   , 6/3/26 , High    , 6/3/26
 Find out why file upload section breaks after one upload                                           , ui    , 6/3/26 , High    , 6/3/26
-Adjust default states in tabs to be the first choice in dropdown                                   , ui    , 6/4/26 , Low     , 
+Adjust default states in tabs to be the first choice in dropdown                                   , ui    , 6/4/26 , Low     , 6/5/26
 Create log file/error handeling if user accidentally deletes database while Technomancer is running, git   , 6/4/26 , Low     , 
 Odd issues when selecting embed model - cannot duplicate?                                          , ui    , 6/4/26 , Low     , 
 Try uploading on multiple computers                                                                , rag   , 6/4/26 , Medium  , 6/4/26
-Try uploading with different embeddings to same database                                           , rag   , 6/4/26 , High    , 
+Try uploading with different embeddings to same database                                           , rag   , 6/4/26 , High    , 6/4/26
 Try querying from database with wrong embedding                                                    , rag   , 6/4/26 , High    , 6/4/26
 Update Rule system list at both file upload and pressing enter on dd                               , ui    , 6/4/26 , High    , 6/4/26
 Share states across tabs with updates across tabs                                                  , ui    , 6/4/26 , High    , 6/4/26
 Find way to update and share rule system state across tabs                                         , ui    , 6/4/26 , Low     , 6/4/26
 Be able to query information in database                                                           , rag   , 6/3/26 , High    , 6/4/26
-Have technomancer cite sources                                                                     , rag   , 6/3/26 , Medium  , 
+Have technomancer cite sources                                                                     , rag   , 6/3/26 , Medium  , 6/6/26
 Fix rule system drop down getting the whole list and not just one system                           , ui    , 6/4/26 , Medium  , 6/5/26
-Add similarity score threshold for return query                                                    , rag   , 6/4/26 , Medium  , 
-Check user message for know collection first during query                                          , rag   , 6/4/26 , Medium  , 
+Add similarity score threshold for return query                                                    , rag   , 6/4/26 , Medium  , 6/6/26
+Check user message for rule systems and metadata during query                                      , rag   , 6/4/26 , Medium  , 6/6/26
 reimplement deletion of documents                                                                  , rag   , 6/4/26 , High    , 6/5/26
 Add user loggin                                                                                    , ui    , 6/4/26 , Low     , 
 Reinitialize document list after deletion of a document                                            , ui    , 6/4/26 , Low     , 
@@ -89,3 +89,8 @@ Add logging to file deletion to confirm file has been delete                    
 Fix issues with avatar of chatbot and user                                                         , ui    , 6/5/26 , Low     , 
 Display language and embedding models to user                                                      , ui    , 6/5/26 , High    , 6/5/26
 Add counter for number of documents in Mangement accordion                                         , ui    , 6/5/26 , Medium  , 6/5/26
+Add ability to adjust k in advanced featuers                                                       , ui    , 6/5/26 , Low     ,
+Update tag list inbeteen uses                                                                      , ui    , 6/5/26 , High    , 6/5/26
+If user adds tags to a specific document get those to the master list                              , ui    , 6/6/26 , Low     ,
+Get error for using wrong embedding to query database                                              , git   , 6/6/26 , Low     ,
+Add ability to adjust score threshold in advanced features                                         , ur    , 6/6/26 , Low     ,

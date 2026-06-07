@@ -22,18 +22,28 @@ import yaml
 
 
 # Add logging here to make sure things are being added properly.
-def append_state_list(states, state):
+def append_state_list(states: list, state: list | str):
     '''
     Updates a state list with a new stat added.
     '''
-    logger.info(f"{state} being added to {states}")
-    if state and state not in tuple(states):
-        states.append(state)
-    elif not state and state not in tuple(states):
-        states.append("Generic")
+    logger.info(f"{state} | {states} | {type(state)}")
+    if isinstance(state, str): states = set([state]) | set(states)
+    elif isinstance(state, list): states = set(state) | set(states)
+    states = list(states)
 
-    logger.info(f"List is now {states}")
+    # if isinstance(state, str):
+    #     if state and state not in tuple(states):
+    #         states.append(state)
+    #     elif not state and state not in tuple(states):
+    #         states.append("Generic")
+
+    # else:
+    #     for s in state:
+    #         if s not in tuple(states):
+    #             states.append(state)
+
     states.sort()
+    logger.info(f"List is now {states}")
     return states
 
 
@@ -103,6 +113,21 @@ def _enter_event(value, key_data: gr.KeyUpData):
     '''
     if key_data.key == "Enter":
         return value
+    
+
+def export_tags(tags: list):
+    '''
+    Exports the settings to a save file
+    '''
+    tags = {"tags": tags}
+    settings_path = cwd / "Settings" / "Tags.yaml"
+    try:
+        with open(settings_path, "w") as file:
+            yaml.dump(tags, file)
+    except Exception as e:
+        logger.info(f"Error exporting Metadata Tags | {settings_path} | {tags} | {type(e)} | {e}")
+    else:
+        logger.info(f"Successfully save Metadata Tags")
 
 
 def _extract_content(content) -> str:
@@ -265,7 +290,9 @@ def stop_command():
     return False
 
 
-def technomancer_response(chat_history, lang_model, embed_model, *args, **kwargs):
+def technomancer_response(chat_history, lang_model, embed_model,
+                          hr_collection: str | None = None, tags: list[str] | None = None,
+                          *args, **kwargs):
     '''
     This yields the chatbots response. Again, *args and **kwargs are not really needed, but are here *in case*
     '''
@@ -275,7 +302,8 @@ def technomancer_response(chat_history, lang_model, embed_model, *args, **kwargs
 
     from __rag_pipeline import query_rag_routed
     logger.info(f"Generating response | Lang Model {lang_model} | Embed Model {embed_model}")
-    for response in query_rag_routed(user_msg, chat_history[:-2], lang_model, embed_model, *args, **kwargs):
+    
+    for response in query_rag_routed(user_msg, chat_history[:-2], lang_model, embed_model, collection=hr_collection, tags=tags, *args, **kwargs):
         chat_history[-1]["content"] = response  # now the last item is the assistant placeholder
         yield chat_history
 
@@ -293,7 +321,8 @@ def update_drop_down(choices: list, choice: str | None = None):
     '''
     Updates a drop down menu. Useful for rule systems, documents, and model choices
     '''
-    if choices: return gr.Dropdown(choices = choices, value = choice if choice else None)
+    if choices and choice: return gr.Dropdown(choices = choices, value = choice)
+    elif choices: return gr.Dropdown(choices = choices)
     else: return gr.Dropdown(choices = [])
 
 

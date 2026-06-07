@@ -1,7 +1,0 @@
-models:
-- qwen3-embedding:4b
-- phi4:latest
-rule_systems:
-- Enchanted Realms
-- Super Hero Fun
-- Codename:Spandex

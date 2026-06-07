@@ -12,7 +12,7 @@ from functools import lru_cache
 
 from langchain_chroma import Chroma
 
-from langchain_community.document_loaders import PDFPlumberLoader, TextLoader, UnstructuredCSVLoader, UnstructuredEPubLoader
+from langchain_community.document_loaders import PDFPlumberLoader, TextLoader, UnstructuredCSVLoader, UnstructuredEPubLoader, UnstructuredWordDocumentLoader, UnstructuredMarkdownLoader
 
 from langchain_ollama import OllamaEmbeddings  # this should hopefully get rid of that warning about depreciation
 from langchain_ollama import ChatOllama
@@ -22,7 +22,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableBranch, RunnableLambda, RunnablePassthrough
 
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownHeaderTextSplitter
 
 import ollama
 
@@ -30,6 +30,47 @@ cwd = pathlib.Path.cwd()
 chroma_database_dir = cwd / "DB_of_Holding"
 
 _chroma_client = None
+
+
+def _classify_and_tag(msg: str, llm, rules_systems: list[str], available_tags: list[str]):
+    '''
+    Classifies the message and adds the metadata tags to the LMM.
+
+    Tweek this to handle the possibility of different editions. Let the LLM output a list of rules and it can choose the most probable one later.
+    '''
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", f"""Analyze the user query and respond with exactly three lines and nothing else. Do not add preamples, extra lines, or anything else.
+         Line 1: Either RULES or GENERAL
+         Line 2: Comma-separated relevant tags from this list: {", ".join(available_tags)}, or None
+         Line 3: the name of the rule system use from this list: {rules_systems}, or NONE
+
+         RULES means questions about game mechanics, rules, tables, states, abilities, NPCs, lore, or anything from a rulebook.
+         GENERAL means everything else.
+
+         Example response:
+         RULES
+         Rules,Combat
+         D&D
+         """), ("human", "{question}")
+    ])
+
+    result = (prompt | llm | StrOutputParser()).invoke({"question": msg}).strip()
+    lines = result.strip().splitlines()
+
+    classification = lines[0].strip().upper() if lines else "GENERAL"
+    
+    tags = []
+    if len(lines) > 1 and lines[1].strip().upper() != "NONE":
+        tags = [t.strip() for t in lines[1].split(",") if t.strip() in available_tags]
+
+    game_system = None
+    if len(lines) > 2 and lines[2].strip().upper() != "NONE":
+        game_system = lines[2].strip()
+        game_system = game_system if game_system in rules_systems else None
+
+    logger.info(f"Classified Question | {classification} | {tags} | {game_system}")
+
+    return classification, tags, game_system
 
 
 def _clean_collection(collection: str):
@@ -94,12 +135,37 @@ def create_collection(collection: str):
     else:
         logger.info(f"Successfully created collection in database")
 
+    
+def delete_collection(hr_collection, nuclear_option: bool = False):
+    '''
+    Deletes an entire collection of documents.
+    '''
+    if hr_collection is None:
+        return None
+
+    client = _get_client()
+
+    if nuclear_option:
+        logger.critical(f"Everything is being reset!")
+        client.reset()
+        logger.critical(f"Everything in the database was removed | Database is not reset")
+        return None
+
+    ascii_collection = _clean_collection(hr_collection)
+    logger.warning(f"Entire collection being deleted! | {hr_collection} | {ascii_collection}")
+
+    client.delete_collection(name = ascii_collection)
+    logger.warning(f"{hr_collection} was deleted | {ascii_collection} was removed")
+
+
 
 def delete_document(hr_collection, metadata):
     '''
     Deletes a document in the database. Does so by finding everything with matching metadata and deleting it. Searches on the source of the data, which is hopefully reliable.
 
     Again, use the human readable version of the collection name.
+
+    Metadata is really the title. The variable is named as such because it's pulling from the metadata toget the title.
     '''
     client = _get_client()
     
@@ -110,7 +176,7 @@ def delete_document(hr_collection, metadata):
     try:
         local_ascii_collection.delete(where = {"Title": metadata})
     except Exception as e:
-        logger.critical(f"Error deleting chunks for the document with metadata {metadata} | {hr_collection}")
+        logger.critical(f"Error deleting chunks for the document with metadata {metadata} | {hr_collection} | {type(e)} | {e}")
     else:
         documents = find_documents(hr_collection)
         logger.info(f"Documents left | {hr_collection} | {documents}")
@@ -168,9 +234,16 @@ def find_documents(hr_collection):
     local_collection = client.get_collection(str(ascii_collection))
     results: dict = local_collection.get() # type: ignore  There's an error here that shouldn't be an error. It works fine.
 
+    # print(list(results.keys()))
+    # first = list(results["metadatas"][0])
+    # first.sort()
+    # print(first.get("Title", None))
+    # ['ids', 'embeddings', 'documents', 'uris', 'included', 'data', 'metadatas']
+    # From metadatas: ['Author', 'CreationDate', 'Creator', 'ModDate', 'Producer', 'Title', 'file_path', 'game_system', 'id', 'page', 'source', 'tags', 'total_pages']
+
     items = 0
     for item in results["metadatas"]:
-        title = item.get("Title", None)
+        title = item.get("Title", None)  # This shouldn't be a thing anymore: I'm manually adding titles if the title isn't there. But just in case I do miss something, I'm going to keep this code written as is.
         try:
             if title: titles.add(title)
             else: titles.add(pathlib.Path(item["source"]).stem)  # this is in case the title doesn't have a Title.
@@ -231,17 +304,85 @@ def _get_embeddings(embed_model):
 #     return MergerRetriever(retrievers = retrievers)
 
 
+def get_metadata(hr_collection: str, title: str):
+    '''
+    Gets the metadata for a given document.
+    '''
+    ascii_collection = _clean_collection(hr_collection)
+    client = _get_client()
+    collection = client.get_collection(name = ascii_collection)
+
+    logger.info(f"Getting metadata tags for {title} | {hr_collection} | {collection}")
+
+    results = collection.get(where = {"Title": title})
+    try:
+        local_tags = results["metadatas"][0]["tags"]  # if this is done right, the only thing that needs to be pulled is the first index. They all should have the same metadatas
+    except IndexError as e:
+        logger.error(f"Index Error trying to pull metadata | {title} | {hr_collection} | {type(results)} | {len(results)}")
+        return []
+    except Exception as e:
+        logger.error(f"Error trying to pull metadatas | {title} | {hr_collection} | {ascii_collection} | {type(results)} - expected to be type dict | {type(e)} | {e}")
+        return []
+
+    logger.info(f"Returning tags | {local_tags}")
+
+    return local_tags.split(",")
+
+
+# def get_title(entry):
+#     '''
+#     Returns a single entry in the database.
+#     '''
+#     title = item.get("Title", None)
+#     for item in results["metadatas"]:
+#         title = item.get("Title", None)
+#         try:
+#             if title: titles.add(title)
+#             else: titles.add(pathlib.Path(item["source"]).stem)  # this is in case the title doesn't have a Title.
+#         except Exception as e:
+#             logger.warning(f"Cannont find title or source in item retreived from collection {hr_collection} | Error type {type(e)} | {e}")
+#         else:
+
+
 @lru_cache(maxsize = 8)
-def _get_retriever(collection: str, embed_model: str, k: int = 10):
+def _get_retriever(hr_collection: str, embed_model: str, 
+                   k: int = 10, tags: list[str] | None = None, score_threshold: float | None = 0.3,  # score is 1 - cosine similarity, so a lower number here is a higher threshold
+                   *args, **kwargs):
     '''
     Returns a retriever for the given collection name.
 
     Part of RAG Query
     '''
-    if not collection: collection = "Generic"
-    ascii_collection = _clean_collection(collection)
+    # if isinstance(tags, tuple): tags = list(tags)
+    if not hr_collection: hr_collection = "Generic"
+    ascii_collection = _clean_collection(hr_collection)
     db = Chroma(persist_directory = str(chroma_database_dir), embedding_function = _get_embeddings(embed_model), collection_name = ascii_collection)
-    return db.as_retriever(search_kwargs = {"k": k})
+
+    search_kwargs = {"k": k}
+
+    filters = [{"game_system": hr_collection}]
+
+    if tags:
+        tag_filters = [{"tags": {"$contains": tag}} for tag in tags]
+        if len(tag_filters) == 1:
+            filters.append(tag_filters[0])
+        else:
+            filters.append({"$or": tag_filters})
+
+    if len(filters) == 1:
+        search_kwargs["filter"] = filters[0]
+    else:
+        search_kwargs["filter"] = {"$and": filters}
+
+    if score_threshold is not None:
+        return db.as_retriever(search_type = "similarity_score_threshold",
+                               search_kwargs = {**search_kwargs, "score_threshold": score_threshold})
+    
+    return db.as_retriever(search_type = "similarity", search_kwargs = search_kwargs)
+    
+    # return db.as_retriever(search_type = "similarity", search_kwargs = {"k": k, "filter": {"game_system": hr_collection}})
+    
+    
 
 
 def _gradio_history_to_langchain(history: list):
@@ -299,7 +440,7 @@ def _load_document(file_path, DocLoader):
     return document
 
 
-def load_documents(file, collection, chunk_size, chunk_overlap, embed_model,
+def load_documents(file, collection, chunk_size, chunk_overlap, embed_model, tags: list | None = None,
                    *args, **kwargs):
     '''
     Loads the document from the input path, then add it to the database.
@@ -307,15 +448,25 @@ def load_documents(file, collection, chunk_size, chunk_overlap, embed_model,
     Part of RAG Input
     '''
     logger.info(f"Loading file | {file} | {collection} | {chunk_size} | {chunk_overlap} | {embed_model}")
+
     
     # error_msg = ""
     ascii_collection = _clean_collection(collection)
     if isinstance(file, str): file = pathlib.Path(file)
+    title = file.stem  # this is to ensure that there is a title being added to the metadata
     document = None
     chunks = None
     DocLoader = None
 
-    suffix_map = {".pdf": PDFPlumberLoader, ".txt": TextLoader, ".csv": UnstructuredCSVLoader, ".epub": UnstructuredEPubLoader}
+    suffix_map = {
+        ".csv": UnstructuredCSVLoader, 
+        ".doc": UnstructuredWordDocumentLoader,
+        ".docx": UnstructuredWordDocumentLoader, 
+        ".epub": UnstructuredEPubLoader, 
+        ".md": UnstructuredMarkdownLoader,
+        ".pdf": PDFPlumberLoader, 
+        ".txt": TextLoader, 
+                  }
     DocLoader = suffix_map.get(file.suffix)
 
     if DocLoader is None:
@@ -346,16 +497,17 @@ def load_documents(file, collection, chunk_size, chunk_overlap, embed_model,
     logger.info(f"Created {len(chunks)} chunks from {file.name}")
 
     try:
-        _load_to_Chroma(chunks, ascii_collection, embed_model)
-        logger.info(f"Successfully loaded {file.name} into {collection}")
-        return f"Successfully added {len(chunks)} chunks from {file.name} to {collection}."
+        _load_to_Chroma(chunks, ascii_collection, embed_model, tags = tags or [], title = title)
+        logger.info(f"Successfully loaded {file.name} | {collection} | {tags}")
+        return f"Successfully added {len(chunks)} chunks | {file.name} | {collection}."
     except Exception as e:
         logger.error(f"Failed to load chunks to Chroma | {type(e)} | {e}")
         return f"Error writing to database: {e}"
 
 
 
-def _load_to_Chroma(chunks, collection, embed_model, batch_size = 50,
+def _load_to_Chroma(chunks, collection, embed_model, 
+                    batch_size = 50, tags: list | None = None, title: str | None = None,
                     *args, **kwargs):
     '''
     Loads the documents to a Chroma DB
@@ -370,7 +522,15 @@ def _load_to_Chroma(chunks, collection, embed_model, batch_size = 50,
     existing_items = db.get(include = [])
     existing_ids = set(existing_items["ids"])
 
-    new_chunks = [c for c in chunks if c.metadata["id"] not in existing_ids]
+    # new_chunks = [c for c in chunks if c.metadata["id"] not in existing_ids]
+    new_chunks = []
+    for chunk in chunks:
+        if chunk.metadata["id"] not in existing_ids:
+            t = chunk.metadata.get("Title", None)
+            if t is None: chunk.metadata["Title"] = title
+            chunk.metadata["game_system"] = hr_collection
+            chunk.metadata["tags"] = ",".join(tags) if tags else ""  # chormaDB doesn't allow lists to be part of the metadata, it has to be a string.
+            new_chunks.append(chunk)
 
     if not new_chunks:
         logger.info(f"No new chunks to add to {hr_collection}")
@@ -485,41 +645,48 @@ def _merge_retrievers(retrievers):
 #         yield response
 
 
-def query_rag_routed(message: str, history: list, lang_model: str, embed_model: str, collection: str | None = None, *args, **kwargs):
+def query_rag_routed(message: str, history: list, lang_model: str, embed_model: str, 
+                     collection: str | None = None, tags: list[str] | None = None,
+                     *args, **kwargs):
     '''
     Query routes the collection questions.
     '''
+    if isinstance(tags, str): 
+        logger.warning(f"Tags had a string input | {tags} | Setting to NONE")
+        tags = None
+
+    from __tech_fn import load_tags
+    available_tags = load_tags()
+    rule_systems = find_collections()
+
     llm = ChatOllama(model = lang_model)
 
-    classifier_prompt = ChatPromptTemplate.from_messages([
-        ("system", """Classify the following question into one of two categories:
-         - RULES: quesitons about game mechanics, rules, tables, stats, spells, weapons, monsters, characters, abilities, equipment, or anything found in a source or rulebook or personal notes.
-         - General: everything else.
-         Respond with only RULES or GENERAL.
-         """), ("human", "{question}")
-    ])
+    classification, extracted_tags, extracted_rule_system  = _classify_and_tag(message, llm, rule_systems, available_tags)
 
-    classification = (classifier_prompt | llm | StrOutputParser()).invoke({"question": message}).strip().upper()
 
-    if classification == "General":
-        logger.info("Question classified as GENERAL")
+    if classification != "RULES":
         yield from _direct_response(message, history, lang_model)
         return
     
-    logger.info("Question classified as RULES")
-    
-    if collection: collections_to_search = [collection]
-    else: collections_to_search = find_collections()
+    tags = tuple(set((tags or []) + extracted_tags)) or None
+
+    logger.info(f"Classification | {classification} | {extracted_tags} | {extracted_rule_system} | {tags}")
+
+    collections_to_search = None
+    if collection and extracted_rule_system: collections_to_search = list(set([collection]) | set([extracted_rule_system]))
+    elif collection: collections_to_search = [collection]
+    elif extracted_rule_system: collections_to_search = [extracted_rule_system]
+    else: collections_to_search = rule_systems
 
     if not collections_to_search:
-        logger.info("No collections came back, answering as GENERAL")
+        logger.warning("No collections came back, answering as GENERAL")
         yield from _direct_response(message, history, lang_model)
         return
     
-    if len(collections_to_search) == 1: 
-        retriever = _get_retriever(collections_to_search[0], embed_model)
+    if len(collections_to_search) == 1:
+        retriever = _get_retriever(collections_to_search[0], embed_model, tags = tags)
     else:
-        retrievers = [_get_retriever(c, embed_model, k = 10) for c in collections_to_search]
+        retrievers = [_get_retriever(c, embed_model, tags = tags) for c in collections_to_search]
         retriever = _merge_retrievers(retrievers)
     
     logger.info(f"Generating query | {lang_model} | {embed_model}")
@@ -537,8 +704,9 @@ def _rag_response(message, history, lang_model, retriever):
 
     prompt = ChatPromptTemplate.from_messages([("system", """
                                                 Rulebook context has been retrieved and is provided below. Use it if it is relevant to the question. 
-                                                If it is not relevant to the question, ignore it entirely and answer conversationally from your own 
-                                                knowledge, but state that you cannot find relevant information from the retrieved database.
+                                                If it is, cite the page numbers and books the information is coming from. If it is not relevant to 
+                                                the question, ignore it entirely and answer conversationally from your own knowledge, but state that 
+                                                you cannot find relevant information from the retrieved database.
                                                 
                                                 Retrieved context:
                                                 {context}
@@ -571,6 +739,40 @@ def _rag_response(message, history, lang_model, retriever):
     except Exception as e:
         logger.critical(f"Unable to return message | New Error | {type(e)} | {e}")
         return f"Error generating response"
+
+
+
+def update_metadata(hr_collection, title, new_tags):
+    '''
+    Updates the metadata with new tags.
+
+    This updates individual chunks, so it is theoretically possible to target specific chunks for different metadata.
+    '''
+    # new_tags = ",".join(new_tags)
+    new_tags = set(new_tags)
+    ascii_collection = _clean_collection(hr_collection)
+    logger.info(f"Adding metadata | {title} | {new_tags} | {hr_collection} | {ascii_collection}")
+
+    client = _get_client()
+    local_collection = client.get_collection(str(ascii_collection))
+    local_result = local_collection.get(where = {"Title": title}, include = ["metadatas"])  # the thing about python: You can do things like this in pandas but NOT here. You have to pull it from the variable itself
+
+    if not local_result["ids"]:
+        logger.warning(f"No Chunks found | {title} | {hr_collection}")
+        return
+    
+    updated_metadatas = []
+
+    for meta in local_result["metadatas"]:
+        old_tags = set(meta.get("tags", "").split(",")) - {""} # this strips the empty string. Useful for if "tags" is empty.
+        merged_tags = old_tags | new_tags
+        updated_meta = {**meta, "tags": ",".join(sorted(merged_tags))}  # unpack, sort the list, and join the whole thing into a string
+        updated_metadatas.append(updated_meta)
+
+    local_collection.update(ids = local_result["ids"], metadatas =  updated_metadatas)
+
+    logger.info(f"Finished updating metadata | {title} | {hr_collection} | {updated_meta}")
+
 
 
 
