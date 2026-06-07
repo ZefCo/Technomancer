@@ -14,7 +14,7 @@ Ollama: can use any local model that the user has installed. Please note you hav
 
 Gradio: It runs as a local server on a device, which means any web capable device can interact with it at {that devices ip}:7860. It is not currently meant to go online as copyrighted material could be in it. For initial testing and deployment it will be populated with free RPG material, but even then the database (due to its size) will probably not be uploaded. Currently this does not support any login or chat saving, but both of those are planned for the future. At least locally. Please note! This requires Gradio 6 or later. 5 will note work! Gradio has made several critical changes that mean pervious versions of Gradio will be either expecting different message structures when interacting with the LLM or keyword arguements at runtime. Failure to run Gradio 6 will result in Technomancer crashing at start up (reporting a type error) or throwing an error when sending a message to the LLM.
 
-LangChain: Also need langchain-ollama, langchain-community, pdfplumber, langchain-chroma, sentence-transformers, transformers (the last two are different things)
+LangChain: Also need langchain-ollama, langchain-community, langchain-unstructured, pdfplumber, langchain-chroma, sentence-transformers, transformers (the last two are different things)
 
 ChromaDB:
     
