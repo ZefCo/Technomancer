@@ -89,12 +89,12 @@ Add logging to file deletion to confirm file has been delete                    
 Fix issues with avatar of chatbot and user                                                         , ui    , 6/5/26 , Low     , 
 Display language and embedding models to user                                                      , ui    , 6/5/26 , High    , 6/5/26
 Add counter for number of documents in Mangement accordion                                         , ui    , 6/5/26 , Medium  , 6/5/26
-Add ability to adjust k in advanced featuers                                                       , ui    , 6/5/26 , Low     ,
+Add ability to adjust k in advanced featuers                                                       , ui    , 6/5/26 , Low     , 6/7/26
 Update tag list inbeteen uses                                                                      , ui    , 6/5/26 , High    , 6/5/26
 If user adds tags to a specific document get those to the master list                              , ui    , 6/6/26 , Low     ,
 Get error for using wrong embedding to query database                                              , git   , 6/6/26 , Low     ,
 Add ability to adjust score threshold in advanced features                                         , ui    , 6/6/26 , Low     , 6/7/26
 Save k chunks and threshold in settings between uses                                               , ui    , 6/7/26 , Medium  , 6/7/26
-Live stream log file(s) into new tab                                                               , log   , 6/7/26 , High    ,
+Live stream log file(s) into new tab                                                               , log   , 6/7/26 , High    , 6/7/26
 Prefix documents (add in ability to turn on or off)                                                , rag   , 6/7/26 , Medium  ,
 Selectivly add metadata tags to documents                                                          , rag   , 6/7/26 , Medium  ,
