@@ -11,54 +11,60 @@ logger.info(f"Reading States file @ (time to be implemented)")
 cwd = pathlib.Path.cwd()
 
 RULE_SYSTEMS = find_collections()  # this will be the various collections in the database.
-LANG_MODELS, EMBED_MODELS = sort_models()
 DBOH = load_paths()
 TAGS = load_tags()
 IMAGES = import_setting(cwd / "Settings" / "AvatarImages.yaml")
+# LANG_MODELS, EMBED_MODELS = sort_models()
+
+try:
+    LANG_MODELS, EMBED_MODELS = sort_models()
+except Exception as e:
+    print(f"Error type {type(e)} | Check if Ollama is installed and running | Creating dummy lists")
+    LANG_MODELS = ["Dummy Language 1", "Dummy Language 2", "Dummy Language 3"]
+    EMBED_MODELS = ["Dummy Embed 1", "Dummy Embed 2", "Dummy Embed 3"]
 
 # Images Avatars
-avatars_state = gr.State(value = [IMAGES["user"], IMAGES["bot"]])
+avatars_state: list = gr.State(value = [IMAGES["user"], IMAGES["bot"]])
 # logger.info(f"Avatar state paths | {avatars_state}")
 
 # Chunk sizes
-chunk_batches_state = gr.State(value = 50)
-chunk_overlap_state = gr.State(value = 50)
-chunk_size_state = gr.State(value = 512)
+chunk_batches_state: int = gr.State(value = 50)
+chunk_overlap_state: int = gr.State(value = 50)
+chunk_size_state: int = gr.State(value = 512)
 
 # Paths to databases
-db_paths_list_state = gr.State(value = DBOH)
+db_paths_list_state: str = gr.State(value = DBOH)
 # default message for typing
-default_message_state = gr.State(value = "Type in a new rule system/collection")
+default_message_state: str = gr.State(value = "Type in a new rule system/collection")
 # list of the documents for the selected rule system/collection
-documents_list_state = gr.State(value = [])
+documents_list_state: list = gr.State(value = [])
 
 # List of embedding models and the one seleted
-embed_models_list_state = gr.State(value = EMBED_MODELS)
-embed_model_state = gr.State(value = EMBED_MODELS[0])
+embed_models_list_state: list = gr.State(value = EMBED_MODELS)
+embed_model_state: str = gr.State(value = EMBED_MODELS[0])
 
 # this is just to clear a drop down
-empty_list_state = gr.State(value = [])
+empty_list_state: list = gr.State(value = [])
 
 k_state: int = gr.State(value = 10)
 
-lang_models_list_state = gr.State(value = LANG_MODELS)
-lang_model_state = gr.State(value = LANG_MODELS[0])
+lang_models_list_state: list = gr.State(value = LANG_MODELS)
+lang_model_state: str = gr.State(value = LANG_MODELS[0])
+log_file_state: str = gr.State(value = None)
 
-name_chunksize_state = gr.State(value = "Chunk Size")
-named_chunkoverlap_state = gr.State(value = "Chunk Overlap")
-name_embed_state = gr.State(value = "Embedding Model")
-name_k_state = gr.State(value = "K")
-name_lang_state = gr.State(value = "Language Model")
-name_rule_state = gr.State(value = "Rule System")
+name_chunksize_state: str = gr.State(value = "Chunk Size")
+named_chunkoverlap_state: str = gr.State(value = "Chunk Overlap")
+name_embed_state: str = gr.State(value = "Embedding Model")
+name_k_state: str = gr.State(value = "K")
+name_lang_state: str = gr.State(value = "Language Model")
+name_rule_state: str = gr.State(value = "Rule System")
 name_tags_state: str = gr.State(value = "Metadata Tags")
-name_threshold_state = gr.State(value = "Cosine Similarity Threshold")
+name_threshold_state: str = gr.State(value = "Cosine Similarity Threshold")
 
-overlap_name_state = gr.State(value = "Chunk Overlap")
+percent_state: float = gr.State(value = 0.1)
 
-percent_state = gr.State(value = 0.1)
-
-rule_systems_list_state = gr.State(value = RULE_SYSTEMS)
-rule_system_state = gr.State(value = RULE_SYSTEMS[0] if RULE_SYSTEMS else None)
+rule_systems_list_state: list = gr.State(value = RULE_SYSTEMS)
+rule_system_state: str = gr.State(value = RULE_SYSTEMS[0] if RULE_SYSTEMS else None)
 # logger.info(f"Rule System State | {rule_system_state}")
 
 settings_path_tags_state: str = gr.State(value = "Tags.yaml")
@@ -66,7 +72,7 @@ settings_path_tags_state: str = gr.State(value = "Tags.yaml")
 tags_list_state: list = gr.State(value = TAGS)
 threshold_state: float = gr.State(value = 0.3)
 
-upload_status_state = gr.State(value = "")
+upload_status_state: str = gr.State(value = "")
 
-true_state = gr.State(value = True)
-false_state = gr.State(value = False)
+true_state: bool = gr.State(value = True)
+false_state: bool = gr.State(value = False)

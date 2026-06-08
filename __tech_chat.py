@@ -28,7 +28,13 @@ def create_chat():
     
     with gr.Blocks() as chat:
         with gr.Row():
-            chatbot = gr.Chatbot(buttons = ["copy_all"])
+            try:
+                chatbot = gr.Chatbot(buttons = ["copy_all"])
+            except Exception as e:
+                logger.critical(f"Error at initializing chatbot | Commonly caused by using Gradio version < 6 | {type(e)} | {e}")
+                print("Critical Error, check logs for error - possible cause: using Gradio < Gradio 6")
+                import sys
+                sys.exit()
 
         with gr.Row(equal_height = True):
             with gr.Column(scale = 12):

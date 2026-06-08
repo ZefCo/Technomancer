@@ -15,6 +15,8 @@ import re
 
 import subprocess
 
+import time
+
 import yaml
 
 # logger = logging.getLogger(__name__)
@@ -151,7 +153,12 @@ def find_models():
     '''
     Finds all the models that are installed on the computer. Meant to be run when the server starts.
     '''
-    result = subprocess.run(['ollama', 'list'], capture_output = True, text = True)
+    result = None
+    try:
+        result = subprocess.run(['ollama', 'list'], capture_output = True, text = True)
+    except Exception as e:
+        logger.critical(f"Subprocess command to Ollama failed | {type(result)}")
+        raise FileNotFoundError
     if len(result.stderr) > 0: logger.critical(f"Errors when pulling Ollama modes | {result.stderr}")
     # Shut down system? Raise error?
     
@@ -228,6 +235,24 @@ def import_setting(setting_file):
     return settings
 
 
+def live_stream(file_path: pathlib.Path | str):
+    '''
+    Live streams a file, mostly for the logs. That way the logs can be read in real time.
+    '''
+    with open(file_path, "r") as logfile:
+        logfile.seek(0)
+        log_text = ""
+
+        while True:
+            line = logfile.readline()
+            if not line:
+                time.sleep(1)
+                continue
+
+            log_text += line
+            yield log_text
+
+
 def list_length(lst):
     '''
     For returning the length of a list. It's really used just to count the number of documents in the collection.
@@ -273,7 +298,14 @@ def sort_models():
     
     language: list = []
     embedding: list = []
-    models = find_models()
+    try:
+        models = find_models()
+    except FileNotFoundError as e:
+        logger.critical(f"Check if Ollama is installed and running")
+        raise FileNotFoundError
+    except Exception as e:
+        logger.critical(f"New error | {type(e)} | {e}")
+        raise type(e)
 
     for model in models:
         for em in embedding_models:
@@ -282,13 +314,17 @@ def sort_models():
                 break
         else: language.append(model)
 
-    if len(language) < 1: 
+    logger.info(f"{language} | {embedding}")
+
+    # if len(language) < 1: 
+    if language is None:
         logger.critical(f"No Language models identified | {models}")
         print("No Language models found, check logs and system for models")
     else: 
         logger.info(f"Language models found | {language}")
     
-    if len(embedding) < 1: 
+    # if len(embedding) < 1:
+    if embedding is None: 
         logger.critical(f"No Embedding models identified | {models}")
         print("No Embedding models found, check logs and system for models")
     else: 
@@ -370,6 +406,13 @@ def update_textbox(message):
     Updates the textbox.
     '''
     return gr.Textbox(value = message)
+
+
+def update_textbox_label(label):
+    '''
+    Changes the label of the textbox, i.e. when selecting a log file, makes the label show the log file name
+    '''
+    return gr.Textbox(label = label)
 
 
 def user_submit(user_msg, chat_history, *args, **kwargs):

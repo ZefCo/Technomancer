@@ -26,9 +26,8 @@ from __states import (avatars_state,
                       embed_model_state, embed_models_list_state, empty_list_state, 
                       false_state, 
                       k_state,
-                      lang_model_state, lang_models_list_state, 
+                      lang_model_state, lang_models_list_state, log_file_state,
                       name_chunksize_state, name_embed_state, name_lang_state, name_rule_state, named_chunkoverlap_state, name_tags_state, name_threshold_state, 
-                      overlap_name_state, 
                       percent_state, 
                       rule_system_state, rule_systems_list_state, 
                       settings_path_tags_state, 
@@ -39,6 +38,7 @@ import __tech_about as tech_about
 from __tech_chat import create_chat
 from __tech_fn import update_drop_down, update_textbox, update_slider, update_number
 from __tech_upload import create_upload
+from __tech_logs import create_log
 
 
 def launch_technomancer():
@@ -57,6 +57,7 @@ def launch_technomancer():
         empty_list_state.render()
         false_state.render()
         k_state.render()
+        log_file_state.render()
         lang_model_state.render()
         lang_models_list_state.render()
         name_chunksize_state.render()
@@ -66,7 +67,6 @@ def launch_technomancer():
         name_rule_state.render()
         name_tags_state.render()
         name_threshold_state.render()
-        overlap_name_state.render()
         percent_state.render()
         rule_system_state.render()
         rule_systems_list_state.render()
@@ -101,9 +101,14 @@ def launch_technomancer():
                     # loga that upload tab cannot be loaded properly.
                     logger.critical(f"Something went wrong when starting Upload Tab | Error type {type(e)} | {e}")
                     raise RuntimeError("Cannot load Upload Tab")
+                
+            with gr.Tab(label = "Logs") as log_tab:
+                TECH_LOG, log_components = create_log()
 
-        upload_tab.select(fn = update_drop_down, inputs = [embed_models_list_state, embed_model_state], outputs = [upload_components["embed_models_dd"]]).then(fn = update_drop_down, inputs = [db_paths_list_state], outputs = [upload_components["list_of_db_dd"]]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [upload_components["rule_systems_dd_1"]]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [upload_components["rule_systems_dd_2"]]).then(fn = update_textbox, inputs = [embed_model_state], outputs = [upload_components["embed_textbox"]]).then(fn = update_drop_down, inputs = [tags_list_state], outputs = [upload_components["metadata_tags_dd"]])
         chat_tab.select(fn = update_drop_down, inputs = [embed_models_list_state, embed_model_state], outputs = [chat_components["embed_models_dd"]]).then(fn = update_drop_down, inputs = [lang_models_list_state, lang_model_state], outputs = [chat_components["lang_models_dd"]]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [chat_components["rule_systems_dd"]]).then(fn = update_textbox, inputs = [lang_model_state], outputs = [chat_components["lang_textbox"]]).then(fn = update_textbox, inputs = [embed_model_state], outputs = [chat_components["embed_textbox"]]).then(fn = update_drop_down, inputs = [tags_list_state], outputs = [chat_components["metadata_tags_dd"]]).then(fn = update_number, inputs = [k_state], outputs = chat_components["k"]).then(fn = update_slider, inputs = [threshold_state], outputs = [chat_components["threshold"]])
+        upload_tab.select(fn = update_drop_down, inputs = [embed_models_list_state, embed_model_state], outputs = [upload_components["embed_models_dd"]]).then(fn = update_drop_down, inputs = [db_paths_list_state], outputs = [upload_components["list_of_db_dd"]]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [upload_components["rule_systems_dd_1"]]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [upload_components["rule_systems_dd_2"]]).then(fn = update_textbox, inputs = [embed_model_state], outputs = [upload_components["embed_textbox"]]).then(fn = update_drop_down, inputs = [tags_list_state], outputs = [upload_components["metadata_tags_dd"]])
+        log_tab.select()
+
 
     return Technomancer
 
