@@ -7,7 +7,6 @@ logger.info(f"Reading RAG Pipeline file @ (time to be implemented)")
 
 import chromadb
 
-
 from functools import lru_cache
 
 from langchain_chroma import Chroma
@@ -27,10 +26,16 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownHea
 
 import ollama
 
+import toml
+
 cwd = pathlib.Path.cwd()
 chroma_database_dir = cwd / "DB_of_Holding"
 
 _chroma_client = None
+
+with open(cwd / "Settings" / "EnrichTags.toml", "r") as file:
+    enrich_keywords = toml.load(file)
+    enrich_keywords = enrich_keywords["enrich_tags"]
 
 
 def _classify_and_tag(msg: str, llm, rules_systems: list[str], available_tags: list[str]):
@@ -209,8 +214,8 @@ def _enrich_chunk_metadata(chunks, game_system: str, llm_model: str | None = Non
     '''
     Tags specific documents with certain tags, making sections easier to identify later.
     '''
-    from __tech_fn import import_setting
-    keywords: dict = import_setting("Keyword.yaml")
+    # keywords: dict = import_setting("Keyword.yaml")
+    # keywords: dict = enrich_keywords
     for chunk in chunks:
         text = chunk.page_content.lower()
         auto_tags = set()
@@ -224,7 +229,7 @@ def _enrich_chunk_metadata(chunks, game_system: str, llm_model: str | None = Non
         else:
             chunk.metadata["chunk_type"] = "text"
 
-        for term, tag_terms in keywords.items():
+        for term, tag_terms in enrich_keywords.items():
             if set(tag_terms) & set(text.split()):
                 auto_tags.add(term)
 

@@ -29,3 +29,5 @@ ollama
     pip install ollama (for python library)
 pdfplumber
     pip install pdfplumber
+toml
+    pip install toml

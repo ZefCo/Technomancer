@@ -85,7 +85,7 @@ def create_chat():
 
                 with gr.Column(variant = "panel"):
                     with gr.Row():
-                        K = gr.Number(label = "Top K Queries returned", value = 1, scale = 3, precision = 0)
+                        k_num = gr.Number(label = "Top K Queries returned", value = None, scale = 3)
                         threshold = gr.Slider(label="Cosine Similarity Threshold", minimum=0, maximum=1, step=0.001, scale = 10)
                 # # update_khold = gr.Button(value = "Update K and Threshold", scale = 3)
 
@@ -96,7 +96,7 @@ def create_chat():
         
         embedding_choice_dd.select(fn = change_state, inputs = [embedding_choice_dd, embed_model_state, true_state, name_embed_state], outputs = [embed_model_state]).then(fn = update_textbox, inputs = [embed_model_state], outputs = [embed_textbox]).then(fn = enable_prefix, inputs = [embed_model_state], outputs = [prefix_check, prefix_box])
 
-        K.change(fn = change_state, inputs = [K, k_state, true_state, name_k_state], outputs = [k_state])
+        k_num.change(fn = change_state, inputs = [k_num, k_state, true_state, name_k_state], outputs = [k_state])
 
         lang_model_choice_dd.select(fn = change_state, inputs = [lang_model_choice_dd, lang_model_state, true_state, name_lang_state], outputs = [lang_model_state]).then(fn = update_textbox, inputs = [lang_model_state], outputs = [lang_textbox])
 
@@ -106,7 +106,8 @@ def create_chat():
 
         threshold.change(fn = change_state, inputs = [threshold, threshold_state, true_state, name_threshold_state], outputs = [threshold_state])
 
-    return chat, {"embed_models_dd": embedding_choice_dd, "embed_textbox": embed_textbox, "k": K, "lang_models_dd": lang_model_choice_dd, "lang_textbox": lang_textbox, "metadata_tags_dd": metadata_tags_dd, "rule_systems_dd": available_rule_systems_dd, "threshold": threshold}
+    return chat, {"embed_models_dd": embedding_choice_dd, "embed_textbox": embed_textbox, "k": k_num, "lang_models_dd": lang_model_choice_dd, "lang_textbox": lang_textbox, "metadata_tags_dd": metadata_tags_dd, "rule_systems_dd": available_rule_systems_dd, "threshold": threshold}
+    # return chat, {"embed_models_dd": embedding_choice_dd, "embed_textbox": embed_textbox, "lang_models_dd": lang_model_choice_dd, "lang_textbox": lang_textbox, "metadata_tags_dd": metadata_tags_dd, "rule_systems_dd": available_rule_systems_dd, "threshold": threshold}
     # return chat, {"embed_models_dd": embedding_choice_dd, "embed_textbox": embed_textbox, "lang_models_dd": lang_model_choice_dd, "lang_textbox": lang_textbox, "metadata_tags_dd": metadata_tags_dd, "rule_systems_dd": available_rule_systems_dd}
 
 

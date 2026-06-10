@@ -7,6 +7,6 @@ Some documents can't be deleted,Rifts-Ultimate Edition could not be deleted,6/5/
 If it's the last rule system that is deleted then you get an error that the payload is no in the list of choices because something is tryig to force it to have a state,gradio.exceptions.Error: 'Value: <thing> is not in the list of choices: []',6/5/26,Low,
 Unhasable error when trying to query database,Unknown need to duplicate,6/6/26,Medium,
 tags was input as string when it should be None or List,Reason not know - checking type and outputing str to log while setting tags to None,6/6/26,Medium,6/6/26
-Error 17 showing up at times,K for some reason is not being tracked properly,6/7/26,Low,
+Error 17 showing up at times,K for some reason is not being tracked properly - k_name_state was not rendered in Technomancer.py,6/7/26,Low,6/9/26
 Threshold state not updating at runtime,Unknown - looks like it should work,6/8/26,Medium,6/8/26
-<class 'pydantic_core._pydantic_core.ValidationError'> | 1 validation error for OllamaEmbeddings model_kwargs Extra inputs are not permitted [type=extra_forbidden | input_value={'prompt': 'search_document:'} | input_type=dict] For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden,when loading Troika Rules,6/9/26,High,
+<class 'pydantic_core._pydantic_core.ValidationError'> | 1 validation error for OllamaEmbeddings model_kwargs Extra inputs are not permitted [type=extra_forbidden | input_value={'prompt': 'search_document:'} | input_type=dict] For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden,when loading Troika Rules - probably related to PDF ingestion issues,6/9/26,High,

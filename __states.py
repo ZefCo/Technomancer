@@ -1,33 +1,40 @@
 import logging
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 import gradio as gr
-import os
+# import os
 import pathlib
 from __rag_pipeline import find_collections
-from __tech_fn import import_setting, load_paths, load_tags, sort_models
+from __tech_fn import import_settings, sort_models
 
 logger = logging.getLogger(__name__)
 logger.info(f"Reading States file @ (time to be implemented)")
 cwd = pathlib.Path.cwd()
 
+SETTINGS = import_settings()
+
 RULE_SYSTEMS = find_collections()  # this will be the various collections in the database.
-DBOH = load_paths()
-TAGS = load_tags()
-IMAGES = import_setting(cwd / "Settings" / "AvatarImages.yaml")
+# DBOH = load_paths()
+# TAGS = load_tags()
+# IMAGES = import_setting(cwd / "Settings" / "AvatarImages.yaml")
+IMAGES = tuple([SETTINGS["chatbot"]["user"], SETTINGS["chatbot"]["bot"]])
+TAGS = SETTINGS["metadata"]["metadata"]
+DBOH_SETTINGS = SETTINGS["database"]
+DBOH = SETTINGS["database"]["default_path"]
+DBOH_ALT = SETTINGS["database"]["alternative_paths"]
 
-DBOH_SETTINGS = import_setting(cwd / "Settings" / "DB_Settings.yaml")
+# DBOH_SETTINGS = import_setting(cwd / "Settings" / "DB_Settings.yaml")
 
-# LANG_MODELS, EMBED_MODELS = sort_models()
+# # LANG_MODELS, EMBED_MODELS = sort_models()
 
 try:
-    LANG_MODELS, EMBED_MODELS = sort_models()
+    LANG_MODELS, EMBED_MODELS = sort_models(tuple(SETTINGS["embedd_models"]["models"]))
 except Exception as e:
     print(f"Error type {type(e)} | Check if Ollama is installed and running | Creating dummy lists")
     LANG_MODELS = ["Dummy Language 1", "Dummy Language 2", "Dummy Language 3"]
     EMBED_MODELS = ["Dummy Embed 1", "Dummy Embed 2", "Dummy Embed 3"]
 
 # Images Avatars
-avatars_state: list = gr.State(value = [IMAGES["user"], IMAGES["bot"]])
+avatars_state: list = gr.State(value = IMAGES)  #[IMAGES["user"], IMAGES["bot"]])
 # logger.info(f"Avatar state paths | {avatars_state}")
 
 # Chunk sizes
@@ -83,3 +90,6 @@ upload_status_state: str = gr.State(value = "")
 
 true_state: bool = gr.State(value = True)
 false_state: bool = gr.State(value = False)
+
+server_name = SETTINGS["server"]["server_name"]
+server_port = SETTINGS["server"]["server_port"]

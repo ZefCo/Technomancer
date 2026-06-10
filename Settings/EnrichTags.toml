@@ -1,0 +1,6 @@
+[enrich_tags]
+"Combat Rules" = ["armor", "attack", "combat", "critical", "damage", "dodge", "firearm", "gun", "hit", "initiative", "melee", "miss", "wound", "weapon"]
+NPC = ["ally", "character", "contact", "creature", "enemy", "fixer", "monster", "npc", "patron"] 
+Lore = ["background", "culture", "faction", "legend", "lore", "history", "myth", "setting", "world"] 
+"Magic Rules" = ["ability", "conjure", "enchant", "fetish" , "magic" , "mana" , "power" , "ritual" , "spell" , "sorcery"] 
+Rules = ["bonus", "check", "d4", "d6", "d8", "d10", "d12", "d20", "d100", "dice", "mechanic", "modifier", "penalty", "percentile", "pool", "roll", "rule", "test", "threshold"]
