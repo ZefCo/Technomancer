@@ -110,6 +110,16 @@ def check_path(paths: list):
     return return_paths
 
 
+def enable_prefix(lang_model: str):
+    '''
+    '''
+    if lang_model.split(":")[0] in tuple(["nomic-embed-text", "nomic-embed-text-v2-moe"]):
+        return gr.Checkbox(visible=True), gr.Text(visible=True)
+    else:
+        return gr.Checkbox(visible=False), gr.Text(visible=False)
+
+
+
 def _enter_event(value, key_data: gr.KeyUpData):
     '''
     Updates something when the enter key is pressed.
@@ -221,13 +231,14 @@ def import_setting(setting_file):
     '''
     Import a settings file
     '''
-    caller_frame = inspect.currentframe().f_back
-    caller_code = caller_frame.f_code
+    # caller_frame = inspect.currentframe().f_back
+    # caller_code = caller_frame.f_code
 
-    func_name = caller_code.co_name
-    file_name = caller_code.co_filename
+    # func_name = caller_code.co_name
+    # file_name = caller_code.co_filename
     
-    logger.info(f"{file_name} | {func_name} | Loading settings | File {setting_file}")
+    # logger.info(f"{file_name} | {func_name} | Loading settings | File {setting_file}")
+    logger.info(f"Loading Settings | File {setting_file}")
     with open(cwd / "Settings" / setting_file, "r") as file:
         settings = yaml.safe_load(file)
     logger.info(f"Loaded settings | {settings}")
@@ -359,6 +370,12 @@ def technomancer_response(chat_history, lang_model, embed_model,
         yield chat_history
 
 
+def toggle_state(state):
+    '''
+    Toggles the state, returning True if the state was False, and False if it was True
+    '''
+    if state: return False
+    else: return True
 
 # def update_chunk(old_chunk, new_chunk):
 #     '''
@@ -372,9 +389,15 @@ def update_drop_down(choices: list, choice: str | None = None):
     '''
     Updates a drop down menu. Useful for rule systems, documents, and model choices
     '''
-    if choices and choice: return gr.Dropdown(choices = choices, value = choice)
-    elif choices: return gr.Dropdown(choices = choices)
-    else: return gr.Dropdown(choices = [])
+    if choices and choice:
+        # logger.info(f"Updating drop down | {choices} | {choice}") 
+        return gr.Dropdown(choices = choices, value = choice)
+    elif choices:
+        # logger.info(f"Updating drop down | {choices}") 
+        return gr.Dropdown(choices = choices)
+    else:
+        # logger.info(f"Updating drop down | []") 
+        return gr.Dropdown(choices = [])
 
 
 def update_number(value):
@@ -388,7 +411,8 @@ def update_slider(value, percent = 1):
     '''
     Updates the slider value
     '''
-    return gr.Slider(value = int(percent * value))
+    if isinstance(value, int): return gr.Slider(value = int(percent * value))
+    return gr.Slider(value = percent * value)
 
 
 def update_system_prompt(new_prompt, current):

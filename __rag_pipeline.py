@@ -17,6 +17,7 @@ from langchain_community.document_loaders import PDFPlumberLoader, TextLoader, U
 from langchain_ollama import OllamaEmbeddings  # this should hopefully get rid of that warning about depreciation
 from langchain_ollama import ChatOllama
 
+from langchain_core.documents import Document
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -204,6 +205,37 @@ def _direct_response(message: str, history: list, lang_model: str):
             yield response
 
 
+def _enrich_chunk_metadata(chunks, game_system: str, llm_model: str | None = None):
+    '''
+    Tags specific documents with certain tags, making sections easier to identify later.
+    '''
+    from __tech_fn import import_setting
+    keywords: dict = import_setting("Keyword.yaml")
+    for chunk in chunks:
+        text = chunk.page_content.lower()
+        auto_tags = set()
+
+        if _looks_like_table(chunk.page_content):
+            chunk.metadata["chunk_type"] = "table"
+            auto_tags.add("table")
+        elif _looks_like_stat_block(chunk.page_content):
+            chunk.metadata["chunk_type"] = "stat_block"
+            auto_tags.add("stat_block")
+        else:
+            chunk.metadata["chunk_type"] = "text"
+
+        for term, tag_terms in keywords.items():
+            if set(tag_terms) & set(text.split()):
+                auto_tags.add(term)
+
+        chunk.metadata["game_system"] = game_system
+        chunk.metadata["auto_tags"] = ",".join(sorted(auto_tags))
+
+        existing_tags = set(chunk.metadata.get("tags", "").split(",")) - {""}
+        chunk.metadata["tags"] = ",".join(sorted(existing_tags | auto_tags))
+
+    return chunks
+
 
 def find_collections():
     '''
@@ -270,6 +302,56 @@ def _format_docs(docs):
     return "\n\n".join(formatted)
 
 
+def _generate_section_summary(chunks: list, lang_model: str, section_size: int = 10) -> list:
+    '''
+    Generates a summary from an LLM about the chunks.
+    '''
+    logger.info(f"Generating Summary | {lang_model} | Section Size: {section_size}")
+    summary_docs = []
+    section_index = -1
+    game_system = chunks[0].metadata["game_system"]
+    file_path = chunks[0].metadata["source"]
+    base_id = f"{str(pathlib.Path(file_path).stem)}:summary"
+
+
+    for i in range(0, len(chunks), section_size):
+        section_index += 1
+        section = chunks[i: i + section_size]
+        combined_text = ""
+        combined_tags = set()
+        for c in section:
+            # combined_text = "\n\n".join(c.page_content for c in section)
+            combined_text = f"{combined_text}\n\n{c.page_content}"
+            combined_tags = combined_tags | set(c.metadata["tags"].split(","))
+
+        response = ollama.chat(model = lang_model,
+                               messages = [{"role": "user",
+                                            "content": f"""Summarize the following rulebook sections in 2-5 paragraphs. Generate tables or lists if necessary.
+                                            Forcus on: what rules or mechanics are covered, what a player needs to know, any key terms that should be defined. Be concise but complete.
+
+                                            Text:
+                                            {combined_text}"""}])
+        summary_text = response["message"]["content"]
+
+        first_chunk = section[0]
+        
+        summary_doc = Document(page_content = summary_text,
+                               metadata = {
+                                           "game_system": game_system,
+                                           "tags": ",".join(sorted(combined_tags)),
+                                           "chunk_type": "summary",
+                                           "source": file_path,
+                                           "source_pages": f"{section[0].metadata.get('page', '?')}-{section[-1].metadata.get('page', '?')}",
+                                           "original_chunk_count": len(section),
+                                           "id": f"{base_id}:{section_index}"
+                                           })
+        
+        summary_docs.append(summary_doc)
+        logger.info(f"Generated summary | {first_chunk.metadata.get('page', '?')} - {section[-1].metadata.get('page', '?')}")
+
+    return summary_docs
+
+
 # Log when this is called and creates a new client.
 def _get_client():
     '''
@@ -284,12 +366,14 @@ def _get_client():
 
 
 @lru_cache(maxsize=4)
-def _get_embeddings(embed_model):
+def _get_embeddings(embed_model, search_doc = True):
     '''
     Currently this is hard coded to only use the qwen3 model embeddings.
 
     Part of RAG Input
     '''
+    if search_doc:
+        return OllamaEmbeddings(model = embed_model, model_kwargs = {"prompt": "search_document:"})
     return OllamaEmbeddings(model = embed_model)
 
 
@@ -346,8 +430,8 @@ def get_metadata(hr_collection: str, title: str):
 
 @lru_cache(maxsize = 8)
 def _get_retriever(hr_collection: str, embed_model: str, 
-                   k: int = 10, tags: list[str] | None = None, score_threshold: float | None = 0.3,  # score is 1 - cosine similarity, so a lower number here is a higher threshold
-                   *args, **kwargs):
+                   k: int = 10, tags: tuple[str, ...] | None = None, score_threshold: float | None = 0.3,  # score is 1 - cosine similarity, so a lower number here is a higher threshold
+                   search_query: bool = True, *args, **kwargs):
     '''
     Returns a retriever for the given collection name.
 
@@ -356,7 +440,8 @@ def _get_retriever(hr_collection: str, embed_model: str,
     # if isinstance(tags, tuple): tags = list(tags)
     if not hr_collection: hr_collection = "Generic"
     ascii_collection = _clean_collection(hr_collection)
-    db = Chroma(persist_directory = str(chroma_database_dir), embedding_function = _get_embeddings(embed_model), collection_name = ascii_collection)
+    QEM = _get_query_embeddings(embed_model, search_query)
+    db = Chroma(persist_directory = str(chroma_database_dir), embedding_function = QEM, collection_name = ascii_collection)
 
     search_kwargs = {"k": k}
 
@@ -383,8 +468,38 @@ def _get_retriever(hr_collection: str, embed_model: str,
     return db.as_retriever(search_type = "similarity", search_kwargs = search_kwargs)
     
     # return db.as_retriever(search_type = "similarity", search_kwargs = {"k": k, "filter": {"game_system": hr_collection}})
+
+
+def _get_summary_retriever(hr_collection: str, embed_model: str, 
+                           k: int = 5, tags: list[str] | None = None, score_threshold: float | None = 0.3):
+    '''
+    Limits its retriever to only the summary chunks.
+    '''
+    ascii_collection = _clean_collection(hr_collection)
+
+    db = Chroma(persist_directory=str(chroma_database_dir), embedding_function=_get_query_embeddings(embed_model), collection_name=ascii_collection)
+
+    filters = [{"game_system": hr_collection}, {"chunk_type": "summary"}]
+
+    if tags:
+        tag_filters = [{"tags": {"$contains": tag}} for tag in tags]
+        filters.append({"$or": tag_filters} if len(tag_filters) > 1 else tag_filters[0])
     
+    search_kwargs = {"k": k, "filter": {"$and": filters}}
+
+    if score_threshold is not None:
+        return db.as_retriever(search_type = "similarity_score_threshold", search_kwargs = {**search_kwargs, "score_threshold": score_threshold})
+
+    return db.as_retriever(search_type = "similarity", search_kwargs = search_kwargs)
+
     
+def _get_query_embeddings(embeddings: str, search_query: bool = True):
+    '''
+    This allows for the use of the search query prefix in nomic-embed-text. The others, mixed bread and snowflake artic, will come eventually.
+    '''
+    if search_query:
+        return OllamaEmbeddings(model = embeddings, model_kwargs = {"prompt": "search_query:"})
+    return OllamaEmbeddings(model = embeddings)
 
 
 def _gradio_history_to_langchain(history: list):
@@ -442,18 +557,17 @@ def _load_document(file_path, DocLoader):
     return document
 
 
-def load_documents(file, collection, chunk_size, chunk_overlap, embed_model, tags: list | None = None,
+def load_documents(file, hr_collection, embed_model, lang_model,
+                   tags: list | None = None, chunk_size = 512, chunk_overlap = 50, chunk_batch = 50, chunk_sum = 10, 
                    *args, **kwargs):
     '''
     Loads the document from the input path, then add it to the database.
 
     Part of RAG Input
     '''
-    logger.info(f"Loading file | {file} | {collection} | {chunk_size} | {chunk_overlap} | {embed_model}")
-
+    logger.info(f"Loading file | {file} | {hr_collection} | {embed_model} | C Size: {chunk_size} | C Overlap: {chunk_overlap}")
     
-    # error_msg = ""
-    ascii_collection = _clean_collection(collection)
+    ascii_collection = _clean_collection(hr_collection)
     if isinstance(file, str): file = pathlib.Path(file)
     title = file.stem  # this is to ensure that there is a title being added to the metadata
     document = None
@@ -496,12 +610,29 @@ def load_documents(file, collection, chunk_size, chunk_overlap, embed_model, tag
         logger.warning(f"No chunks created from document | {file}")
         return "Error: no chunks could be created"
     
-    logger.info(f"Created {len(chunks)} chunks from {file.name}")
+    chunks = _enrich_chunk_metadata(chunks, game_system = hr_collection)
+    if tags:
+        user_tags = set(tags) if isinstance(tags, list) else {tags}
+        for chunk in chunks:
+            existing = set(chunk.metadata.get("tags", "").split(",")) - {""}
+            chunk.metadata["tags"] = ",".join(sorted(existing | user_tags))
+    
+    logger.info(f"Created {len(chunks)} chunks from {file.name} | Enriched with automated metadata")
+
+    
+    summary = _generate_section_summary(chunks, lang_model, chunk_sum)
 
     try:
-        _load_to_Chroma(chunks, ascii_collection, embed_model, tags = tags or [], title = title)
-        logger.info(f"Successfully loaded {file.name} | {collection} | {tags}")
-        return f"Successfully added {len(chunks)} chunks | {file.name} | {collection}."
+        _load_to_Chroma(summary, ascii_collection, embed_model, add_ids = False, title = title, batch_size = chunk_batch)
+        logger.info(f"Successfully loaded {file.name} summary | {hr_collection}")
+    except Exception as e:
+        logger.error(f"Failed to load summary to Chroma | {type(e)} | {e}")
+        return f" Error writing summary to database: {e}"
+
+    try:
+        _load_to_Chroma(chunks, ascii_collection, embed_model, tags = tags or [], title = title, batch_size = chunk_batch)
+        logger.info(f"Successfully loaded {file.name} | {hr_collection} | {tags}")
+        return f"Successfully added {len(chunks)} chunks | {file.name} | {hr_collection}."
     except Exception as e:
         logger.error(f"Failed to load chunks to Chroma | {type(e)} | {e}")
         return f"Error writing to database: {e}"
@@ -509,7 +640,7 @@ def load_documents(file, collection, chunk_size, chunk_overlap, embed_model, tag
 
 
 def _load_to_Chroma(chunks, collection, embed_model, 
-                    batch_size = 50, tags: list | None = None, title: str | None = None,
+                    add_ids: bool = True, batch_size = 50, tags: list | None = None, title: str | None = None,
                     *args, **kwargs):
     '''
     Loads the documents to a Chroma DB
@@ -517,9 +648,9 @@ def _load_to_Chroma(chunks, collection, embed_model,
     Part of RAG Input
     '''
     hr_collection = human_collection(collection)
-    db = Chroma(persist_directory = str(chroma_database_dir), embedding_function = _get_embeddings(embed_model), collection_name = collection)
+    db = Chroma(persist_directory = str(chroma_database_dir), embedding_function = _get_embeddings(embed_model), collection_name = collection)  # get embeddings here never uses the search doc prefix. Think about turning that on at some point.
 
-    chunks = _metadata_IDs(chunks)
+    if add_ids: chunks = _metadata_IDs(chunks)
 
     existing_items = db.get(include = [])
     existing_ids = set(existing_items["ids"])
@@ -529,16 +660,16 @@ def _load_to_Chroma(chunks, collection, embed_model,
     for chunk in chunks:
         if chunk.metadata["id"] not in existing_ids:
             t = chunk.metadata.get("Title", None)
-            if t is None: chunk.metadata["Title"] = title
-            chunk.metadata["game_system"] = hr_collection
-            chunk.metadata["tags"] = ",".join(tags) if tags else ""  # chormaDB doesn't allow lists to be part of the metadata, it has to be a string.
+            if t is None: chunk.metadata["Title"] = title  # this is to make sure that the document/chunk has a title.
+            # chunk.metadata["game_system"] = hr_collection
+            # chunk.metadata["tags"] = ",".join(tags) if tags else ""  # chormaDB doesn't allow lists to be part of the metadata, it has to be a string.
             new_chunks.append(chunk)
 
     if not new_chunks:
         logger.info(f"No new chunks to add to {hr_collection}")
         return
     
-    logger.info(f"Adding {len(new_chunks)} new chunks | Collection: {hr_collection} | Batches = {batch_size} ")
+    logger.info(f"Adding {len(new_chunks)} new chunks | Collection: {hr_collection} | Batches: {batch_size} ")
 
     for i in range(0, len(new_chunks), batch_size):
         batch = new_chunks[i: i + batch_size]
@@ -551,7 +682,50 @@ def _load_to_Chroma(chunks, collection, embed_model,
             raise
 
 
-def _metadata_IDs(chunks, tags: list | None = None, *args, **kwargs):
+def _looks_like_stat_block(text: str) -> bool:
+    '''
+    Tries to identify if the input context is a stat block or not.
+
+    Currently this is hard coded, but much like the keywords, this would be better moved to an external file for importing. However because it's so specific to games, this will require a lot of research to find the right way to represent blocks. For example Rifts does something completely different and does not fit in this nicely.
+    '''
+    import re
+    # common stat block patterns across RPG systems
+    patterns = [
+        r'\b(STR|DEX|CON|INT|WIS|CHA)\s*:?\s*\d+',  # D&D attributes
+        r'\b(BOD|AGI|REA|STR|WIL|LOG|INT|CHA)\s*:?\s*\d+',  # Shadowrun
+        r'\bAC\s*:?\s*\d+',  # armor class
+        r'\bHP\s*:?\s*\d+',  # hit points
+        r'\bCR\s*:?\s*[\d/]+',  # challenge rating
+        r'\bINIT\s*:?\s*[+-]?\d+',  # initiative
+    ]
+    matches = sum(1 for p in patterns if re.search(p, text, re.IGNORECASE))
+    return matches >= 2  # at least two stat indicators
+
+
+
+def _looks_like_table(text: str) -> bool:
+    '''
+    Tries to determine if the content is a table or not.
+    '''
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    if len(lines) < 3:
+        return False
+    
+    pipe_lines = sum(1 for l in lines if "|" in l)
+    tab_lines = sum(1 for l in lines if "\t" in l)
+    short_lines = sum(1 for l in lines if len(l) < 60)
+
+    if pipe_lines / len(lines) > 0.5:
+        return True
+    if tab_lines / len(lines) > 0.5:
+        return True
+    if short_lines / len(lines) > 0.7 and len(lines) > 5:
+        return True
+    
+    return False
+
+
+def _metadata_IDs(chunks, summary: bool = False, *args, **kwargs):
     '''
     Assigns a new metadata ID to the item. The metadata tag is: source document: page: chunk index. The chunk index for each document goes from [0, max chunks].
     
@@ -575,8 +749,6 @@ def _metadata_IDs(chunks, tags: list | None = None, *args, **kwargs):
         last_page_id = current_page_id
 
         chunk.metadata["id"] = chunk_id
-        # for tag in tags:
-        #     pass
 
     return chunks    
 
@@ -651,7 +823,7 @@ def query_rag_routed(message: str, history: list, lang_model: str, embed_model: 
                      collection: str | None = None, tags: list[str] | None = None, k: int = 10, score_threshold: float = 0.3,
                      *args, **kwargs):
     '''
-    Query routes the collection questions.
+    Routes the question to the correct response, or at least the response that matches the question.
     '''
     if isinstance(tags, str): 
         logger.warning(f"Tags had a string input | {tags} | Setting to NONE")
@@ -664,7 +836,6 @@ def query_rag_routed(message: str, history: list, lang_model: str, embed_model: 
     llm = ChatOllama(model = lang_model)
 
     classification, extracted_tags, extracted_rule_system  = _classify_and_tag(message, llm, rule_systems, available_tags)
-
 
     if classification != "RULES":
         yield from _direct_response(message, history, lang_model)
@@ -685,10 +856,14 @@ def query_rag_routed(message: str, history: list, lang_model: str, embed_model: 
         yield from _direct_response(message, history, lang_model)
         return
     
+    # if _query_wants_table(message):  # this will eventually add another 
+    
     if len(collections_to_search) == 1:
-        retriever = _get_retriever(collections_to_search[0], embed_model, tags = tags, k = k, score_threshold = score_threshold)
+        if _query_is_conceptual(message): retriever = _get_summary_retriever(collections_to_search[0], embed_model, k = k, tags = tags, score_threshold = score_threshold)
+        else: retriever = _get_retriever(collections_to_search[0], embed_model, tags = tags, k = k, score_threshold = score_threshold)
     else:
-        retrievers = [_get_retriever(c, embed_model, tags = tags, k = k, score_threshold = score_threshold) for c in collections_to_search]
+        if _query_is_conceptual(message): retrievers = [_get_summary_retriever(c, embed_model, k = k, tags = tags, score_threshold = score_threshold) for c in collections_to_search] 
+        else: retrievers = [_get_retriever(c, embed_model, tags = tags, k = k, score_threshold = score_threshold) for c in collections_to_search]
         retriever = _merge_retrievers(retrievers)
     
     logger.info(f"Generating query | {lang_model} | {embed_model}")
@@ -742,6 +917,25 @@ def _rag_response(message, history, lang_model, retriever):
         logger.critical(f"Unable to return message | New Error | {type(e)} | {e}")
         return f"Error generating response"
 
+
+def _query_is_conceptual(msg: str) -> bool:
+    '''
+    Determines if the query is conceptual and needs a broad overview.
+    '''
+    conceptual_signals = {"describe", "explain", "generally", "how does", "in general", "overview", "summary", "tell me about", "walk me through", "what is"}
+    msg_lower = msg.lower()
+    return any(signal in msg_lower for signal in conceptual_signals)
+
+
+
+def _query_wants_table(msg: str) -> bool:
+    '''
+    Considers if the input query from the user is looking for tabular data.
+    '''
+    # Again, this might be better for something outside the script rather than hard coded, but I'm going to have to leave this here.
+    table_signals = {"table", "chart", "list", "modifier", "cost", "price", "range", "damage", "stat", "attribute", "how much", "what is the", "roll for"}
+    msg_lower = msg.lower()
+    return any(signal in msg_lower for signal in table_signals)
 
 
 def update_metadata(hr_collection, title, new_tags):
