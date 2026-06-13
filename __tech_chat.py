@@ -18,7 +18,7 @@ from __states import (avatars_state,
                       rule_system_state, 
                       threshold_state, true_state)
 
-from __rag_pipeline import find_documents
+from __rag_pipeline import find_documents, find_document
 
 from __tech_fn import change_state, technomancer_response, update_drop_down, update_textbox, user_submit, list_length, enable_prefix, toggle_state
 
@@ -39,7 +39,7 @@ def create_chat():
 
         with gr.Row(equal_height = True):
             with gr.Column(scale = 12):
-                msg_box = gr.Textbox(show_label = True, label = "Enter Message", submit_btn = True, lines = 5)
+                msg_box = gr.Textbox(show_label = True, label = "Enter Message (shift enter to send)", submit_btn = True, lines = 5)
             
             with gr.Column(scale = 1):
             
@@ -74,7 +74,7 @@ def create_chat():
 
                     available_documents_dd = gr.Dropdown(label = "Available Documents in Selected Rule System (for reference).", choices = [], interactive = True, scale = 15)
 
-            with gr.Accordion(label = "Model Choice", open = False) as adv_feat_acc:
+            with gr.Accordion(label = "Model & Query Choices", open = False) as adv_feat_acc:
                 gr.Markdown("Note, changing this mid conversation might cause confusion/hallucinations within the chatbot.")
                 with gr.Column(variant = "panel"):
                     with gr.Row():
@@ -86,11 +86,12 @@ def create_chat():
                 with gr.Column(variant = "panel"):
                     with gr.Row():
                         k_num = gr.Number(label = "Top K Queries returned", value = None, scale = 3)
-                        threshold = gr.Slider(label="Cosine Similarity Threshold", minimum=0, maximum=1, step=0.001, scale = 10)
+                        threshold = gr.Slider(label="Cosine Similarity Threshold", minimum=0, maximum=2, step=0.001, scale = 10, info="0 -> totally similar, 2 -> complete opposite")
                 # # update_khold = gr.Button(value = "Update K and Threshold", scale = 3)
 
 
         available_rule_systems_dd.select(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_list_state]).then(fn = update_drop_down, inputs = [documents_list_state], outputs = [available_documents_dd]).then(fn = list_length, inputs = [documents_list_state], outputs = [available_documents_textbox])
+        available_documents_dd.select(fn = find_document, inputs = [available_documents_dd, available_rule_systems_dd])
         
         chat_response = msg_box.submit(user_submit, [msg_box, chatbot], [msg_box, chatbot], queue = False).then(fn = technomancer_response, inputs = [chatbot, lang_model_choice_dd, embedding_choice_dd, available_rule_systems_dd, metadata_tags_dd, k_state, threshold_state], outputs = [chatbot])
         

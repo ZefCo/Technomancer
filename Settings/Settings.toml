@@ -13,7 +13,7 @@ chunk_batches_state = 50
 chunk_overlap_state = 50
 chunk_size_state = 512
 chunk_summary_state = 10
-threshold_state = 0.3
+threshold_state = 1.0
 percent_state = 0.1
 k_state = 10
 

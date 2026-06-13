@@ -401,7 +401,7 @@ def update_drop_down(choices: list, choice: str | None = None):
         return gr.Dropdown(choices = choices, value = choice)
     elif choices:
         # logger.info(f"Updating drop down | {choices}") 
-        return gr.Dropdown(choices = choices)
+        return gr.Dropdown(choices = choices, value = None)
     else:
         # logger.info(f"Updating drop down | []") 
         return gr.Dropdown(choices = [])
@@ -419,6 +419,7 @@ def update_slider(value, percent = 1):
     Updates the slider value
     '''
     if isinstance(value, int): return gr.Slider(value = int(percent * value))
+    if isinstance(value, float): return gr.Slider(value = float(percent * value))
     return gr.Slider(value = percent * value)
 
 

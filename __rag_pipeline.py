@@ -28,6 +28,8 @@ import ollama
 
 import toml
 
+from rank_bm25 import BM25Okapi
+
 cwd = pathlib.Path.cwd()
 chroma_database_dir = cwd / "DB_of_Holding"
 
@@ -35,7 +37,7 @@ _chroma_client = None
 
 with open(cwd / "Settings" / "EnrichTags.toml", "r") as file:
     enrich_keywords = toml.load(file)
-    enrich_keywords = enrich_keywords["enrich_tags"]
+    enrich_keywords: dict = enrich_keywords["enrich_tags"]
 
 
 def _classify_and_tag(msg: str, llm, rules_systems: list[str], available_tags: list[str]):
@@ -106,6 +108,20 @@ def _clean_collection(collection: str):
     return ascii_collection
 
 
+def _clean_double_chars(text: str) -> str:
+    '''
+    Cleans text with duplicate characters: TTRROOIIKKAA -> TROIKA
+    '''
+    def fix_word(word):
+        if len(word) >= 4 and all (word[i] == word[i + 1] for i in range(0, len(word) - 1)):
+            return word[::2]  # returns every other character
+        return word
+    
+    words = text.split()
+    fixed = [fix_word(w) for w in words]
+    return " ".join(fixed)
+
+
 def _create_chunks(document, chunk_size, chunk_overlap, *args, **kwargs):
     '''
     Chunks the document
@@ -135,7 +151,7 @@ def create_collection(collection: str):
     collection = _clean_collection(collection)
     client = _get_client()
     try:
-        _ = client.get_or_create_collection(name = collection)
+        _ = client.get_or_create_collection(name = collection, metadata={"hnsw:space": "cosine"})
     except Exception as e:
         logger.critical(f"Error creating collection {collection} in database")
     else:
@@ -162,6 +178,8 @@ def delete_collection(hr_collection, nuclear_option: bool = False):
 
     client.delete_collection(name = ascii_collection)
     logger.warning(f"{hr_collection} was deleted | {ascii_collection} was removed")
+
+    return None
 
 
 
@@ -210,7 +228,7 @@ def _direct_response(message: str, history: list, lang_model: str):
             yield response
 
 
-def _enrich_chunk_metadata(chunks, game_system: str, llm_model: str | None = None):
+def _enrich_chunk_metadata(chunks, game_system: str, embed_model: str, llm_model: str | None = None):
     '''
     Tags specific documents with certain tags, making sections easier to identify later.
     '''
@@ -235,9 +253,10 @@ def _enrich_chunk_metadata(chunks, game_system: str, llm_model: str | None = Non
 
         chunk.metadata["game_system"] = game_system
         chunk.metadata["auto_tags"] = ",".join(sorted(auto_tags))
+        chunk.metadata["embedding_used"] = embed_model
 
         existing_tags = set(chunk.metadata.get("tags", "").split(",")) - {""}
-        chunk.metadata["tags"] = ",".join(sorted(existing_tags | auto_tags))
+        chunk.metadata["tags"] = list(existing_tags)  # ",".join(sorted(existing_tags | auto_tags))
 
     return chunks
 
@@ -257,6 +276,26 @@ def find_collections():
         logger.info(f"No collections found in database")
 
     return collections
+
+
+def find_document(document: str, hr_collection: str):
+    '''
+    Returns the number of chunks related to the documented selected. This outputs to the log.
+    '''
+    from random import randint
+
+    ascii_collection = _clean_collection(hr_collection)
+    client = _get_client()
+    local_collection = client.get_collection(str(ascii_collection))
+    local_chunks = local_collection.get(where = {"Title": document})
+
+    random_chunk = randint(0, len(local_chunks["ids"]) - 1)
+
+    # This will return a dictionary of ['ids', 'embeddings', 'documents', 'uris', 'included', 'data', 'metadatas']
+
+    logger.info(f"{hr_collection} | {document} | Found {len(local_chunks['ids'])} | {local_chunks['metadatas']}")
+    logger.info(f"Random Document | {local_chunks['documents'][random_chunk]}")
+
 
 
 # Log if the collections found are empyt or not. Send lenth of list of titles to log.
@@ -327,7 +366,7 @@ def _generate_section_summary(chunks: list, lang_model: str, section_size: int =
         for c in section:
             # combined_text = "\n\n".join(c.page_content for c in section)
             combined_text = f"{combined_text}\n\n{c.page_content}"
-            combined_tags = combined_tags | set(c.metadata["tags"].split(","))
+            combined_tags = combined_tags | set(c.metadata["tags"]) #  combined_tags | set(c.metadata["tags"].split(","))
 
         response = ollama.chat(model = lang_model,
                                messages = [{"role": "user",
@@ -342,13 +381,15 @@ def _generate_section_summary(chunks: list, lang_model: str, section_size: int =
         
         summary_doc = Document(page_content = summary_text,
                                metadata = {
+                                           "embedding_used": first_chunk.metadata.get("embedding_used", "?"),  # if none, yeild a ? so the user knowns that information is lost.
                                            "game_system": game_system,
-                                           "tags": ",".join(sorted(combined_tags)),
+                                           "tags": list(sorted(combined_tags)), # ",".join(sorted(combined_tags)),
                                            "chunk_type": "summary",
                                            "source": file_path,
                                            "source_pages": f"{section[0].metadata.get('page', '?')}-{section[-1].metadata.get('page', '?')}",
                                            "original_chunk_count": len(section),
-                                           "id": f"{base_id}:{section_index}"
+                                           "id": f"{base_id}:{section_index}",
+                                           "Title": f"{first_chunk.metadata.get("Title", None)}"  # this will be handeled later, if None, pull from the source file
                                            })
         
         summary_docs.append(summary_doc)
@@ -371,7 +412,7 @@ def _get_client():
 
 
 @lru_cache(maxsize=4)
-def _get_embeddings(embed_model, search_doc = True):
+def _get_embeddings(embed_model, search_doc = False):
     '''
     Currently this is hard coded to only use the qwen3 model embeddings.
 
@@ -380,6 +421,17 @@ def _get_embeddings(embed_model, search_doc = True):
     if search_doc:
         return OllamaEmbeddings(model = embed_model, model_kwargs = {"prompt": "search_document:"})
     return OllamaEmbeddings(model = embed_model)
+
+
+def _get_hybrid_retriever(hr_collection: str, embed_model: str, 
+                          k: int = 10, alpha: float = 0.5, tags: tuple[str] | None = None):
+    '''
+    Makes _hybrid_search a RunnableLambda
+    '''
+    def retrieve(query: str) -> list[Document]:
+        return _hybrid_search(query, hr_collection, embed_model, k = k, alpha = alpha, tags = tags)
+    
+    return RunnableLambda(retrieve)
 
 
 # def _get_multi_retriever(collections: list[str], k: int = 5):
@@ -404,18 +456,32 @@ def get_metadata(hr_collection: str, title: str):
     logger.info(f"Getting metadata tags for {title} | {hr_collection} | {collection}")
 
     results = collection.get(where = {"Title": title})
-    try:
-        local_tags = results["metadatas"][0]["tags"]  # if this is done right, the only thing that needs to be pulled is the first index. They all should have the same metadatas
-    except IndexError as e:
-        logger.error(f"Index Error trying to pull metadata | {title} | {hr_collection} | {type(results)} | {len(results)}")
-        return []
-    except Exception as e:
-        logger.error(f"Error trying to pull metadatas | {title} | {hr_collection} | {ascii_collection} | {type(results)} - expected to be type dict | {type(e)} | {e}")
-        return []
+    # print(results["metadatas"][0])
+    embedding_used = results["metadatas"][0]["embedding_used"]
+    tags = set()
 
-    logger.info(f"Returning tags | {local_tags}")
+    for result_tags in results["metadatas"]:
+        # local_tags = result_tags.split(",")
+        try:
+            tags.update(result_tags["tags"]) # tags.update(result_tags["tags"].split(","))
+        except Exception as e:
+            logger.error(f"Error tying to pull metadatas | {title} | {hr_collection} | {ascii_collection} | {type(e)} | {e}")
+            continue
+    # try:
+    #     local_tags = results["metadatas"][0]["tags"]  # if this is done right, the only thing that needs to be pulled is the first index. They all should have the same metadatas
+    # except IndexError as e:
+    #     logger.error(f"Index Error trying to pull metadata | {title} | {hr_collection} | {type(results)} | {len(results)}")
+    #     return []
+    # except Exception as e:
+    #     logger.error(f"Error trying to pull metadatas | {title} | {hr_collection} | {ascii_collection} | {type(results)} - expected to be type dict | {type(e)} | {e}")
+    #     return []
 
-    return local_tags.split(",")
+    # logger.info(f"Returning tags | {local_tags}")
+
+    # return local_tags.split(","), embedding_used
+    # tags = tags - {""}
+    return list(tags), embedding_used
+
 
 
 # def get_title(entry):
@@ -435,8 +501,8 @@ def get_metadata(hr_collection: str, title: str):
 
 @lru_cache(maxsize = 8)
 def _get_retriever(hr_collection: str, embed_model: str, 
-                   k: int = 10, tags: tuple[str, ...] | None = None, score_threshold: float | None = 0.3,  # score is 1 - cosine similarity, so a lower number here is a higher threshold
-                   search_query: bool = True, *args, **kwargs):
+                   k: int = 10, tags: tuple[str, ...] | None = None, score_threshold: float | None = None,  # score is 1 - cosine similarity, so a lower number here is a higher threshold
+                   search_query: bool = False, *args, **kwargs):
     '''
     Returns a retriever for the given collection name.
 
@@ -464,7 +530,8 @@ def _get_retriever(hr_collection: str, embed_model: str,
     else:
         search_kwargs["filter"] = {"$and": filters}
     
-    logger.info(f"k = {k} | score threshold = {score_threshold} (1 - {score_threshold} is used)")
+    # logger.info(f"k = {k} | score threshold = {score_threshold} (1 - cosine similarity is used)")
+    logger.critical(f"Getting DB as a retriever | {hr_collection} | {search_kwargs} | {score_threshold}")
 
     if score_threshold is not None:
         return db.as_retriever(search_type = "similarity_score_threshold",
@@ -476,7 +543,7 @@ def _get_retriever(hr_collection: str, embed_model: str,
 
 
 def _get_summary_retriever(hr_collection: str, embed_model: str, 
-                           k: int = 5, tags: list[str] | None = None, score_threshold: float | None = 0.3):
+                           k: int = 5, tags: list[str] | None = None, score_threshold: float | None = None):
     '''
     Limits its retriever to only the summary chunks.
     '''
@@ -492,13 +559,15 @@ def _get_summary_retriever(hr_collection: str, embed_model: str,
     
     search_kwargs = {"k": k, "filter": {"$and": filters}}
 
+    logger.critical(f"Getting DB as a retriever | {hr_collection} | {search_kwargs} | {score_threshold}")
+
     if score_threshold is not None:
         return db.as_retriever(search_type = "similarity_score_threshold", search_kwargs = {**search_kwargs, "score_threshold": score_threshold})
 
     return db.as_retriever(search_type = "similarity", search_kwargs = search_kwargs)
 
     
-def _get_query_embeddings(embeddings: str, search_query: bool = True):
+def _get_query_embeddings(embeddings: str, search_query: bool = False):
     '''
     This allows for the use of the search query prefix in nomic-embed-text. The others, mixed bread and snowflake artic, will come eventually.
     '''
@@ -542,6 +611,71 @@ def human_collection(collection:str):
     return human_name
 
 
+def _hybrid_search(question: str, hr_collection: str, embed_model: str, 
+                  k: int = 10, alpha: float = 0.5, tags: tuple[str] | None = None) -> list:
+    '''
+    '''
+    ascii_collection = _clean_collection(hr_collection)
+    client = _get_client()
+    raw_collection = client.get_collection(str(ascii_collection))
+
+    # logger.warning(f"Raw Collection | {type(raw_collection)}")
+    # logger.warning(f"{raw_collection['metadatas']}")
+
+    where_filter = {"game_system": hr_collection}
+    if tags:
+        # tag_filters = [{"tags": {"$contains": ",".join(sorted(tags))}}]
+        tag_filters = [{"tags": {"$contains": tag}} for tag in tags]
+        # where_filter = {"$and": [where_filter, {"$or": tag_filters}]}
+        if len(tag_filters) == 1:
+            where_filter = {"$and": [where_filter, tag_filters[0]]}
+        else:
+            where_filter = {"$and": [where_filter, {"$or": tag_filters}]}
+
+    logger.warning(f"Using the following where filter | {where_filter}")
+
+    all_data = raw_collection.get(where = where_filter, include = ["documents", "embeddings", "metadatas"])
+    all_docs = all_data["documents"]
+    all_ids = all_data["ids"]
+    all_metas = all_data["metadatas"]
+
+    if not all_docs:
+        logger.critical(f"Hybrid search failed | No Documents found | {hr_collection} | {tags}")
+        return []
+
+    tokenized = [doc.lower().split() for doc in all_docs]
+    bm25 = BM25Okapi(tokenized)
+    bm25_scores = bm25.get_scores(question.lower().split())
+
+    db = Chroma(persist_directory=str(chroma_database_dir), embedding_function=_get_embeddings(embed_model), collection_name=ascii_collection)
+    semantic_results = db.similarity_search_with_score(question, k = len(all_docs), filter = where_filter)
+
+    semantic_score_map = {result.metadata.get("id", ""): score for result, score in semantic_results}
+
+    max_possible_distance = 2.0
+
+    semantic_raw = [semantic_score_map.get(doc_id, max_possible_distance) for doc_id in all_ids]
+
+    bm25_normalized = _normalize_scores(bm25_scores, flip = False)
+    semantic_normalized = _normalize_scores(semantic_raw, flip = True)
+
+    combined_scores = [alpha * sem + (1 - alpha) * bm25 for sem, bm25 in zip(semantic_normalized, bm25_normalized)]
+
+    ranked_indices = sorted(range(len(combined_scores)), key = lambda i: combined_scores[i], reverse = True)
+    
+    logger.info(f"Hybrid search top {min(k, len(ranked_indices))} results:")
+    for rank, idx in enumerate(ranked_indices[:k]):
+        logger.info(
+            f"  Rank {rank+1} | Combined: {combined_scores[idx]:.3f} | "
+            f"Semantic: {semantic_normalized[idx]:.3f} | "
+            f"BM25: {bm25_normalized[idx]:.3f} | "
+            f"Page: {all_metas[idx].get('page', '?')} | "
+            f"Preview: {all_docs[idx][:60]}"
+        )
+
+    return [Document(page_content=all_docs[idx], metadata = all_metas[idx]) for idx in ranked_indices[:k]]
+
+
 def _load_document(file_path, DocLoader):
     '''
     Generic document loader function.
@@ -558,6 +692,11 @@ def _load_document(file_path, DocLoader):
     if not document:
         logger.warning(f"Loaded document returned None | file {file_path}")
         return None
+    
+    for doc in document:
+        original_len = len(doc.page_content)
+        doc.page_content = _clean_double_chars(doc.page_content)
+        if len(doc.page_content) < original_len * 0.7: logger.warning(f"Significant de-duplication on page {doc.metadata.get('page', '?')} | {original_len} -> {len(doc.page_content)} chars")
     
     return document
 
@@ -615,12 +754,12 @@ def load_documents(file, hr_collection, embed_model, lang_model,
         logger.warning(f"No chunks created from document | {file}")
         return "Error: no chunks could be created"
     
-    chunks = _enrich_chunk_metadata(chunks, game_system = hr_collection)
+    chunks = _enrich_chunk_metadata(chunks, embed_model = embed_model, game_system = hr_collection)
     if tags:
         user_tags = set(tags) if isinstance(tags, list) else {tags}
         for chunk in chunks:
-            existing = set(chunk.metadata.get("tags", "").split(",")) - {""}
-            chunk.metadata["tags"] = ",".join(sorted(existing | user_tags))
+            existing = set(chunk.metadata.get("tags", "")) - {""} # set(chunk.metadata.get("tags", "").split(",")) - {""}
+            chunk.metadata["tags"] = list(sorted(existing | user_tags))
     
     logger.info(f"Created {len(chunks)} chunks from {file.name} | Enriched with automated metadata")
 
@@ -824,8 +963,30 @@ def _merge_retrievers(retrievers):
 #         yield response
 
 
+def _normalize_scores(scores: list[float], flip: bool = False) -> list[float]:
+    '''
+    Min-max normalizes the scores to [0, 1], the traditional normalization.
+
+    Flip = True inverts the results, useful for scores where lower = higher similarity
+    '''
+    if not scores: return []
+
+    min_s = min(scores)
+    max_s = max(scores)
+
+    if max_s == min_s:
+        return [1.0 if not flip else 0.0] * len(scores)
+    
+    normalized = [(s - min_s) / (max_s - min_s) for s in scores]
+
+    if flip:
+        normalized = [1.0 - n for n in normalized]
+
+    return normalized
+
+
 def query_rag_routed(message: str, history: list, lang_model: str, embed_model: str, 
-                     collection: str | None = None, tags: list[str] | None = None, k: int = 10, score_threshold: float = 0.3,
+                     collection: str | None = None, tags: list[str] | None = None, k: int = 10, score_threshold: float | None = None,
                      *args, **kwargs):
     '''
     Routes the question to the correct response, or at least the response that matches the question.
@@ -834,8 +995,9 @@ def query_rag_routed(message: str, history: list, lang_model: str, embed_model: 
         logger.warning(f"Tags had a string input | {tags} | Setting to NONE")
         tags = None
 
-    from __tech_fn import load_tags
-    available_tags = load_tags()
+    # from __tech_fn import load_tags
+    # available_tags = load_tags()
+    available_tags = enrich_keywords  # because I'm lazy and don't want to change the variable right now.
     rule_systems = find_collections()
 
     llm = ChatOllama(model = lang_model)
@@ -863,15 +1025,40 @@ def query_rag_routed(message: str, history: list, lang_model: str, embed_model: 
     
     # if _query_wants_table(message):  # this will eventually add another 
     
+    # The forcing of the float here is to make sure that the number going in is a float.
     if len(collections_to_search) == 1:
-        if _query_is_conceptual(message): retriever = _get_summary_retriever(collections_to_search[0], embed_model, k = k, tags = tags, score_threshold = score_threshold)
-        else: retriever = _get_retriever(collections_to_search[0], embed_model, tags = tags, k = k, score_threshold = score_threshold)
+        # if _query_is_conceptual(message): 
+        #     logger.info(f"Conceptual Query")
+        #     retriever = _get_summary_retriever(collections_to_search[0], embed_model, k = k, tags = tags, score_threshold = float(score_threshold))
+        # else: 
+        #     logger.info(f"Not Conceptual Query")
+        #     retriever = _get_retriever(collections_to_search[0], embed_model, tags = tags, k = k, score_threshold = float(score_threshold))
+        retriever = _get_hybrid_retriever(collections_to_search[0], embed_model, k = k, tags = tags)
     else:
-        if _query_is_conceptual(message): retrievers = [_get_summary_retriever(c, embed_model, k = k, tags = tags, score_threshold = score_threshold) for c in collections_to_search] 
-        else: retrievers = [_get_retriever(c, embed_model, tags = tags, k = k, score_threshold = score_threshold) for c in collections_to_search]
-        retriever = _merge_retrievers(retrievers)
+        # if _query_is_conceptual(message): 
+        #     logger.info(f"Conceptual Query")
+        #     retrievers = [_get_summary_retriever(c, embed_model, k = k, tags = tags, score_threshold = float(score_threshold)) for c in collections_to_search] 
+        # else: 
+        #     logger.info(f"Not Conceptual Query")
+        #     retrievers = [_get_retriever(c, embed_model, tags = tags, k = k, score_threshold = float(score_threshold)) for c in collections_to_search]
+        # retriever = _merge_retrievers(retrievers)
+        def multi_retriever(query: str) -> list[Document]:
+            '''
+            Probably could be a stand alone function rather than an embedded one.
+            '''
+            seen = set()
+            merged = []
+            for col in collections_to_search:
+                results = _hybrid_search(query, col, embed_model, k = max(3, k // len(collections_to_search)), tags = tags)
+                for doc in results:
+                    if doc.page_content not in seen:
+                        seen.add(doc.page_content)
+                        merged.append(doc)
+            return merged[:k]
+        
+        retriever = RunnableLambda(multi_retriever)
     
-    logger.info(f"Generating query | {lang_model} | {embed_model}")
+    logger.info(f"Generating query | {lang_model} | {embed_model} | {type(retriever)}")
     
     yield from _rag_response(message, history, lang_model, retriever)
 

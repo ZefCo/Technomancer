@@ -35,6 +35,7 @@ def create_upload():
     '''
     
     with gr.Blocks() as upload:
+        local_embedding_state = gr.State(value = "")  # this is just because I don't want to import gradio to __rag_pipeline.py
         
         with gr.Row(equal_height = True):
                         
@@ -94,7 +95,9 @@ def create_upload():
 
                     with gr.Row():
                         more_metadata_dd = gr.Dropdown(label = "Tags on current document, select additional tags. This does not update the master list, only the document selected.", choices = [], interactive = True, multiselect = True, scale = 15, allow_custom_value = True)
-                        more_metadata_btn = gr.Button(value = "Add Metadata")
+                        more_metadata_btn = gr.Button(value = "Add Metadata", scale = 1)
+                        local_embedding_box = gr.Textbox(label = "Embedding used for document", value = "", scale = 3)
+
 
                     with gr.Accordion(label = "Delete Entire Rule System", open = False):
                         gr.Markdown("This will delete the entire rule system, along with all books and documents associated with it. It *cannot* be undone.\nYou can Remove a given rule set, clearing out the entire set of documents!\nTo delete the entire database: you must manually delete it from your system. Yes it is possible to add that functionality here, but because no one wants to accidentally delete their database, that has to be done manually.")
@@ -122,14 +125,14 @@ def create_upload():
         # add_doc_tags.click(fn = change_state_list, inputs = [metadata_tags_dd], outputs = [tags_list_state])
 
         available_rule_systems_dd.select(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_list_state]).then(fn = update_drop_down, inputs = [documents_list_state], outputs = [available_documents_dd]).then(fn = list_length, inputs = [documents_list_state], outputs = [available_documents_textbox])
-        available_documents_dd.select(fn = get_metadata, inputs = [available_rule_systems_dd, available_documents_dd], outputs = [more_metadata_dd])
+        available_documents_dd.select(fn = get_metadata, inputs = [available_rule_systems_dd, available_documents_dd], outputs = [more_metadata_dd, local_embedding_state]).then(fn = update_textbox, inputs = [local_embedding_state], outputs = [local_embedding_box])
         
         c_size_slide.change(fn = change_state, inputs = [c_size_slide, chunk_size_state, true_state, name_chunksize_state], outputs = [chunk_size_state]).then(fn = update_slider, inputs = [chunk_size_state, percent_state], outputs = [c_overlap_slide]).then(fn = change_state, inputs = [c_overlap_slide, chunk_overlap_state, true_state, named_chunkoverlap_state], outputs = [chunk_overlap_state])  # This might not work. I'm not confident it will.
         c_overlap_slide.change(fn = change_state, inputs = [c_overlap_slide, chunk_overlap_state, true_state, named_chunkoverlap_state], outputs = [chunk_overlap_state])  # this used to update both the chunk size and overlap. Now this just updates the overlap.
         c_summary_slide.change(fn = change_state, inputs = [c_summary_slide, chunk_summary_state, true_state, name_chunksum_state], outputs = [chunk_summary_state])
         c_batch_slide.change(fn = change_state, inputs = [c_batch_slide, chunk_batches_state, true_state, name_chunkbatch_state], outputs = [chunk_batches_state])
 
-        del_collection_btn.click(fn = delete_collection, inputs = [available_rule_systems_dd], outputs = [rule_system_state]).then(fn = find_collections, outputs = [rule_systems_list_state]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [rule_systems_dd]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [available_rule_systems_dd]).then(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_list_state]).then(fn = update_drop_down, inputs = [documents_list_state], outputs = [available_documents_dd]).then(fn = list_length, inputs = [documents_list_state], outputs = [available_documents_textbox])
+        del_collection_btn.click(fn = delete_collection, inputs = [available_rule_systems_dd], outputs = [rule_system_state]).then(fn = find_collections, outputs = [rule_systems_list_state]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [rule_systems_dd]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [available_rule_systems_dd]).then(fn = update_textbox, inputs = [rule_system_state], outputs = [selected_rule_system])  #.then(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_list_state]).then(fn = update_drop_down, inputs = [documents_list_state], outputs = [available_documents_dd]).then(fn = list_length, inputs = [documents_list_state], outputs = [available_documents_textbox])
         delete_document_btn.click(fn = delete_document, inputs = [available_rule_systems_dd, available_documents_dd]).then(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_list_state]).then(fn = update_drop_down, inputs = [documents_list_state], outputs = [available_documents_dd])
         # del_everything_btn.click(fn = delete_collection, inputs = [available_rule_systems_dd, true_state]).then(fn = find_collections, outputs = [rule_system_state]).then(fn = update_drop_down, inputs = [rule_system_state], outputs = [rule_systems_dd]).then(fn = update_drop_down, inputs = [rule_system_state], outputs = [available_documents_dd])
 
