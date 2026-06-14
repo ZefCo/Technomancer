@@ -38,3 +38,6 @@ UI_Testing/__pycache__
 
 # I'm testing the use of .env files over .yaml files. I don't want to push the .env files yet.
 *.env
+
+# This data doesn't need to be stored. Ever.
+Users.toml

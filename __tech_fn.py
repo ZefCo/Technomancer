@@ -16,15 +16,13 @@ import re
 import subprocess
 
 import time
+import toml
 
 import yaml
 
 # logger = logging.getLogger(__name__)
-
-
-
-
 # Add logging here to make sure things are being added properly.
+
 def append_state_list(states: list, state: list | str):
     '''
     Updates a state list with a new stat added.
@@ -68,7 +66,7 @@ def change_state_list(state_list):
     return state_list
 
 
-def change_state(new_state: str, old_state: str = None | str, 
+def change_state(new_state: str | int | float, old_state: str | int | float | None = None, 
                  log_info: bool = False, state_name: str = "State"):
     '''
     Changes the state.
@@ -108,6 +106,16 @@ def check_path(paths: list):
         return_paths.append(str(path))
 
     return return_paths
+
+
+def enable_prefix(lang_model: str):
+    '''
+    '''
+    if lang_model.split(":")[0] in tuple(["nomic-embed-text", "nomic-embed-text-v2-moe"]):
+        return gr.Checkbox(visible=True), gr.Text(visible=True)
+    else:
+        return gr.Checkbox(visible=False), gr.Text(visible=False)
+
 
 
 def _enter_event(value, key_data: gr.KeyUpData):
@@ -204,35 +212,45 @@ def find_models():
 #                 yield response
 
 
-def import_evn_settings():
+
+def import_settings():
     '''
-    Imports all the settings from the .env settings file.
-
-    This is in the testing phase. It's fairly straight forward, but the advantage of .yaml files is that they are easy to adjust and are human readable.
-    They can also be broken up. Should the .env files be broken up? Should they be kept together? Are they easy to shove into the states? Can they easily
-    be written to? Answer is probably yes to most of them.
     '''
-    load_dotenv(str(cwd.parent / "Settings" / "SETTINGS.env"))
-
-    MY_ENV_TEST = os.getenv("AVATARS", None)
-
-
-def import_setting(setting_file):
-    '''
-    Import a settings file
-    '''
-    caller_frame = inspect.currentframe().f_back
-    caller_code = caller_frame.f_code
-
-    func_name = caller_code.co_name
-    file_name = caller_code.co_filename
-    
-    logger.info(f"{file_name} | {func_name} | Loading settings | File {setting_file}")
-    with open(cwd / "Settings" / setting_file, "r") as file:
-        settings = yaml.safe_load(file)
-    logger.info(f"Loaded settings | {settings}")
+    with open(cwd / "Settings" / "Settings.toml", "r") as file:
+        settings = toml.load(file)
 
     return settings
+
+# def import_evn_settings():
+#     '''
+#     Imports all the settings from the .env settings file.
+
+#     This is in the testing phase. It's fairly straight forward, but the advantage of .yaml files is that they are easy to adjust and are human readable.
+#     They can also be broken up. Should the .env files be broken up? Should they be kept together? Are they easy to shove into the states? Can they easily
+#     be written to? Answer is probably yes to most of them.
+#     '''
+#     load_dotenv(str(cwd.parent / "Settings" / "SETTINGS.env"))
+
+#     MY_ENV_TEST = os.getenv("AVATARS", None)
+
+
+# def import_setting(setting_file):
+#     '''
+#     Import a settings file
+#     '''
+#     # caller_frame = inspect.currentframe().f_back
+#     # caller_code = caller_frame.f_code
+
+#     # func_name = caller_code.co_name
+#     # file_name = caller_code.co_filename
+    
+#     # logger.info(f"{file_name} | {func_name} | Loading settings | File {setting_file}")
+#     logger.info(f"Loading Settings | File {setting_file}")
+#     with open(cwd / "Settings" / setting_file, "r") as file:
+#         settings = yaml.safe_load(file)
+#     logger.info(f"Loaded settings | {settings}")
+
+#     return settings
 
 
 def live_stream(file_path: pathlib.Path | str):
@@ -260,32 +278,32 @@ def list_length(lst):
     return len(lst) if lst else 0
 
 
-def load_paths():
-    '''
-    Loads all the Database paths the user has saved in the settings file.
-    '''
-    # Add logging here to find which places are added.
-    paths = import_setting("DB_Paths.yaml")
+# def load_paths():
+#     '''
+#     Loads all the Database paths the user has saved in the settings file.
+#     '''
+#     # Add logging here to find which places are added.
+#     paths = import_setting("DB_Paths.yaml")
 
-    DBoH = cwd / paths["default_path"]
-    alternatives = paths["alternative_paths"]
-    if alternatives: all_paths = [DBoH] + alternatives
-    else: all_paths = [DBoH]
+#     DBoH = cwd / paths["default_path"]
+#     alternatives = paths["alternative_paths"]
+#     if alternatives: all_paths = [DBoH] + alternatives
+#     else: all_paths = [DBoH]
 
-    all_paths = check_path(all_paths)
+#     all_paths = check_path(all_paths)
 
-    return all_paths
-
-
-def load_tags():
-    '''
-    Loads the metadata tags
-    '''
-    tags = import_setting("Tags.yaml")
-    return tags["tags"]
+#     return all_paths
 
 
-def sort_models():
+# def load_tags():
+#     '''
+#     Loads the metadata tags
+#     '''
+#     tags = import_setting("Tags.yaml")
+#     return tags["tags"]
+
+
+def sort_models(embedding_models):
     '''
     Sorts them between embedding and language models. There is a (non comprehensive) list of embedding models, and if one of them is found it is tagged as an
     embedding mode. Again, this is non comprehensive, so that list may need to be adjusted on a per user basis.
@@ -293,8 +311,8 @@ def sort_models():
     This iterates through all available models tries to match them to an embedding model. If it does, then it appends it to the embedding model list. If it doesn't
     then it appends it to the langauge model list.
     '''
-    embedding_models = import_setting("EmbeddingModels.yaml")
-    embedding_models = tuple(embedding_models["models"])
+    # embedding_models = import_setting("EmbeddingModels.yaml")
+    # embedding_models = tuple(embedding_models["models"])
     
     language: list = []
     embedding: list = []
@@ -359,6 +377,12 @@ def technomancer_response(chat_history, lang_model, embed_model,
         yield chat_history
 
 
+def toggle_state(state):
+    '''
+    Toggles the state, returning True if the state was False, and False if it was True
+    '''
+    if state: return False
+    else: return True
 
 # def update_chunk(old_chunk, new_chunk):
 #     '''
@@ -372,9 +396,15 @@ def update_drop_down(choices: list, choice: str | None = None):
     '''
     Updates a drop down menu. Useful for rule systems, documents, and model choices
     '''
-    if choices and choice: return gr.Dropdown(choices = choices, value = choice)
-    elif choices: return gr.Dropdown(choices = choices)
-    else: return gr.Dropdown(choices = [])
+    if choices and choice:
+        # logger.info(f"Updating drop down | {choices} | {choice}") 
+        return gr.Dropdown(choices = choices, value = choice)
+    elif choices:
+        # logger.info(f"Updating drop down | {choices}") 
+        return gr.Dropdown(choices = choices, value = None)
+    else:
+        # logger.info(f"Updating drop down | []") 
+        return gr.Dropdown(choices = [])
 
 
 def update_number(value):
@@ -388,7 +418,9 @@ def update_slider(value, percent = 1):
     '''
     Updates the slider value
     '''
-    return gr.Slider(value = int(percent * value))
+    if isinstance(value, int): return gr.Slider(value = int(percent * value))
+    if isinstance(value, float): return gr.Slider(value = float(percent * value))
+    return gr.Slider(value = percent * value)
 
 
 def update_system_prompt(new_prompt, current):

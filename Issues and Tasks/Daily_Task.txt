@@ -1,3 +1,11 @@
+6/15/26
+-add score to log
+-add chunk inspector to logs
+-add database connection verification to logs
+6/12/26
+-clean duplicate characters issue in pdf ingestion - done
+-add hybrid search to query results - done
+-correctly implement cosine similiarty - done
 6/6/26
 -Add tags from llm message - done
 6/5/26
@@ -15,7 +23,7 @@
 -Finish logging system to at least 50% - Done. Foundation set, can be updated as more things are added.
 6/1/26
 -Get logging system started - done
--Get query routed system started/investigated
+-Get query routed system started/investigated - done
 5/29/26
 -Delete files from database - done
 -Get rule systems from database - done
@@ -28,4 +36,4 @@
 -Create Env Test - Done
 -Have Ollama read from Chroma DB - Done, but requires checking specific databases, want a more general approach
 -Be able to select models in UI - Done ish. Can be done, but have to distinguish between embedding and language models
--Be able to delete documents in Gradio 
+-Be able to delete documents in Gradio - done (late)

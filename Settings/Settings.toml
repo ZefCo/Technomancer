@@ -1,0 +1,26 @@
+[server]
+server_name = "0.0.0.0"
+server_port = 7860
+
+[chatbot]
+user = ""
+bot = "failure_test.jpg"
+
+[database]
+default_path = "DB_of_Holding"
+default_port = 8000
+alternative_paths = [""]  # not only should these be the same length, but both the alternative paths and the ports should be unique
+alternative_ports = []    # this is because the toml file treats it as a key = value. So the ports and the paths have to be the same length.
+chunk_batches_state = 50
+chunk_overlap_state = 50
+chunk_size_state = 512
+chunk_summary_state = 10
+threshold_state = 1.0
+percent_state = 0.1
+k_state = 10
+
+[metadata]
+metadata = ["Combat Rules", "Equipment", "Fantasy", "Generic", "Homebrew", "Lore", "Magic Equpiment", "Magic Rules", "Matrix Equipment", "Matrix Rules", "NPCs", "Notes", "Rules", "Sci Fi"]
+
+[embedd_models]
+models = ["nomic-embed-text-v2-moe", "qwen3-embedding", "embeddinggemma", "nomic-embed-text", "mxbai-embed-large", "bge-m3", "snowflake-arctic-embed", "all-minilm", "paraphrase-multilingual", "snowflake-arctic-embed2", "granite-embedding", "bge-large"]

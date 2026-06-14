@@ -1,0 +1,69 @@
+# Keywords for dynamic metadata tagging. Feel free to add or subtract as necessary. It is best to keep these tags similar to the manual
+# tags, as then these can be used to dynamically add ones that are missed, or are targeted tags for specific sections. There can be overlap
+# between the different keywords and their tag.
+Combat Rules: 
+- armor 
+- attack 
+- combat 
+- critical 
+- damage 
+- dodge 
+- firearm
+- gun
+- hit 
+- initiative 
+- melee
+- miss 
+- wound 
+- weapon
+NPC: 
+- ally 
+- character 
+- contact 
+- creature 
+- enemy 
+- fixer
+- monster 
+- npc 
+- patron 
+Lore: 
+- background 
+- culture 
+- faction
+- legend 
+- lore 
+- history 
+- myth 
+- setting 
+- world 
+Magic Rules: 
+- ability
+- conjure
+- enchant
+- fetish 
+- magic 
+- mana 
+- power 
+- ritual 
+- spell 
+- sorcery 
+Rules: 
+- bonus 
+- check
+- d4
+- d6
+- d8
+- d10
+- d12
+- d20
+- d100 
+- dice 
+- mechanic 
+- modifier 
+- penalty
+- percentile 
+- pool
+- roll 
+- rule 
+- test 
+- threshold
