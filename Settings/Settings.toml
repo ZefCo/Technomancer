@@ -8,7 +8,9 @@ bot = "failure_test.jpg"
 
 [database]
 default_path = "DB_of_Holding"
-alternative_paths = [""]
+default_port = 8000
+alternative_paths = [""]  # not only should these be the same length, but both the alternative paths and the ports should be unique
+alternative_ports = []    # this is because the toml file treats it as a key = value. So the ports and the paths have to be the same length.
 chunk_batches_state = 50
 chunk_overlap_state = 50
 chunk_size_state = 512

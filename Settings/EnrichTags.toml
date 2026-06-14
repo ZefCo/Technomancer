@@ -4,3 +4,4 @@ NPC = ["ally", "character", "contact", "creature", "enemy", "fixer", "monster", 
 Lore = ["background", "culture", "faction", "legend", "lore", "history", "myth", "setting", "world"] 
 "Magic Rules" = ["ability", "conjure", "enchant", "fetish" , "magic" , "mana" , "power" , "ritual" , "spell" , "sorcery"] 
 Rules = ["bonus", "check", "d4", "d6", "d8", "d10", "d12", "d20", "d100", "dice", "mechanic", "modifier", "penalty", "percentile", "pool", "roll", "rule", "test", "threshold"]
+"Character Creation" = ["character creation", "player", "PC", "attribute", "skill", "ability", "stat", "race", "metahuman", "backstory", "background"]

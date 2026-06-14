@@ -22,7 +22,7 @@ import gradio as gr
 
 from __states import (avatars_state, 
                       chunk_batches_state, chunk_overlap_state, chunk_size_state, chunk_summary_state,
-                      db_paths_list_state, default_message_state, documents_list_state, 
+                      db_paths_list_state, default_message_state, documents_list_state, db_paths_dict_state,
                       embed_model_state, embed_models_list_state, empty_list_state, 
                       false_state, 
                       k_state,
@@ -49,7 +49,7 @@ def launch_technomancer():
         # This is meant to better share states
         avatars_state.render()
         chunk_summary_state.render(), chunk_batches_state.render(), chunk_overlap_state.render(), chunk_size_state.render(), 
-        db_paths_list_state.render(), default_message_state.render(), documents_list_state.render()
+        db_paths_list_state.render(), default_message_state.render(), documents_list_state.render(), db_paths_dict_state.render(),
         embed_model_state.render(), embed_models_list_state.render(), empty_list_state.render()
         k_state.render()
         log_file_state.render(), lang_model_state.render(), lang_models_list_state.render()

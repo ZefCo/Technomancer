@@ -3,8 +3,8 @@
 -add chunk inspector to logs
 -add database connection verification to logs
 6/12/26
--clean duplicate characters issue in pdf ingestion
--add hybrid search to query results
+-clean duplicate characters issue in pdf ingestion - done
+-add hybrid search to query results - done
 -correctly implement cosine similiarty - done
 6/6/26
 -Add tags from llm message - done

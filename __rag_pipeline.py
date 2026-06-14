@@ -50,7 +50,7 @@ def _classify_and_tag(msg: str, llm, rules_systems: list[str], available_tags: l
         ("system", f"""Analyze the user query and respond with exactly three lines and nothing else. Do not add preamples, extra lines, or anything else.
          Line 1: Either RULES or GENERAL
          Line 2: Comma-separated relevant tags from this list: {", ".join(available_tags)}, or None
-         Line 3: the name of the rule system use from this list: {rules_systems}, or NONE
+         Line 3: the name of the rule system use from this list: {", ".join(rules_systems)}, or NONE
 
          RULES means questions about game mechanics, rules, tables, states, abilities, NPCs, lore, or anything from a rulebook.
          GENERAL means everything else.
@@ -120,6 +120,14 @@ def _clean_double_chars(text: str) -> str:
     words = text.split()
     fixed = [fix_word(w) for w in words]
     return " ".join(fixed)
+
+
+def connect_to_database(host: str, port: int):
+    '''
+    This connects to the database.
+    '''
+    # client = chromadb.HttpClient(host='localhost', port=8000)
+    # print(client.heartbeat())  # <- makes sure the client is working.
 
 
 def _create_chunks(document, chunk_size, chunk_overlap, *args, **kwargs):
@@ -252,11 +260,12 @@ def _enrich_chunk_metadata(chunks, game_system: str, embed_model: str, llm_model
                 auto_tags.add(term)
 
         chunk.metadata["game_system"] = game_system
-        chunk.metadata["auto_tags"] = ",".join(sorted(auto_tags))
+        chunk.metadata["auto_tags"] = fill_list(list(sorted(auto_tags)))  # ",".join(sorted(auto_tags))
+        chunk.metadata["tags"] = fill_list(list(sorted(auto_tags)))  # ",".join(sorted(auto_tags))  # I'm separating them like this so I can see what was added and what I added.
         chunk.metadata["embedding_used"] = embed_model
 
-        existing_tags = set(chunk.metadata.get("tags", "").split(",")) - {""}
-        chunk.metadata["tags"] = list(existing_tags)  # ",".join(sorted(existing_tags | auto_tags))
+        # existing_tags = set(chunk.metadata.get("tags", "").split(",")) - {""}  # This is just to make sure that the set doesn't have any weird things in it
+        # chunk.metadata["tags"] = fill_list(list(sorted(existing_tags)))  # ",".join(sorted(existing_tags | auto_tags))
 
     return chunks
 
@@ -332,6 +341,16 @@ def find_documents(hr_collection):
     return list(titles)
 
 
+def fill_list(input_list: list, game_system: str = "Generic") -> list:
+    '''
+    Makes sure that the list is populated with at least one thing.
+
+    the list(set(list)) is to make sure that it is a list, that everything is unique, and that it is still a list, and that it's sorted.
+    '''
+    return list(sorted(set([game_system] + input_list)))
+    # else: return [game_system]
+
+
 def _format_docs(docs):
     '''
     Formats retrieved documents into a single context string. Includes source metadata so the LLM can cite pages.
@@ -346,7 +365,7 @@ def _format_docs(docs):
     return "\n\n".join(formatted)
 
 
-def _generate_section_summary(chunks: list, lang_model: str, section_size: int = 10) -> list:
+def _generate_section_summary(chunks: list, lang_model: str, section_size: int = 10, game_system: str = "Generic") -> list:
     '''
     Generates a summary from an LLM about the chunks.
     '''
@@ -383,15 +402,16 @@ def _generate_section_summary(chunks: list, lang_model: str, section_size: int =
                                metadata = {
                                            "embedding_used": first_chunk.metadata.get("embedding_used", "?"),  # if none, yeild a ? so the user knowns that information is lost.
                                            "game_system": game_system,
-                                           "tags": list(sorted(combined_tags)), # ",".join(sorted(combined_tags)),
+                                           "tags": fill_list(list(sorted(combined_tags))), # ",".join(sorted(combined_tags)),
                                            "chunk_type": "summary",
                                            "source": file_path,
                                            "source_pages": f"{section[0].metadata.get('page', '?')}-{section[-1].metadata.get('page', '?')}",
                                            "original_chunk_count": len(section),
                                            "id": f"{base_id}:{section_index}",
-                                           "Title": f"{first_chunk.metadata.get("Title", None)}"  # this will be handeled later, if None, pull from the source file
+                                           "Title": f"{first_chunk.metadata.get("Title", game_system)}"  # this will be handeled later, if None, pull from the source file
                                            })
         
+        # logger.warning(f"{fill_list(list(sorted(combined_tags)))}")
         summary_docs.append(summary_doc)
         logger.info(f"Generated summary | {first_chunk.metadata.get('page', '?')} - {section[-1].metadata.get('page', '?')}")
 
@@ -408,6 +428,7 @@ def _get_client():
     logger.info(f"Connecting to client")
     global _chroma_client
     if _chroma_client is None: _chroma_client = chromadb.PersistentClient(path = str(chroma_database_dir))
+    # if _chroma_client is None: _chroma_client = chromadb.HttpClient(path = str(chroma_database_dir))
     return _chroma_client
 
 
@@ -713,7 +734,7 @@ def load_documents(file, hr_collection, embed_model, lang_model,
     
     ascii_collection = _clean_collection(hr_collection)
     if isinstance(file, str): file = pathlib.Path(file)
-    title = file.stem  # this is to ensure that there is a title being added to the metadata
+    title = file.stem  # this is to ensure that there is a title being added to the metadata. Also it's better than using hr_collection because that represents the rule system
     document = None
     chunks = None
     DocLoader = None
@@ -759,12 +780,12 @@ def load_documents(file, hr_collection, embed_model, lang_model,
         user_tags = set(tags) if isinstance(tags, list) else {tags}
         for chunk in chunks:
             existing = set(chunk.metadata.get("tags", "")) - {""} # set(chunk.metadata.get("tags", "").split(",")) - {""}
+            chunk.metadata["manual_tags"] = list(sorted(user_tags))
             chunk.metadata["tags"] = list(sorted(existing | user_tags))
     
     logger.info(f"Created {len(chunks)} chunks from {file.name} | Enriched with automated metadata")
 
-    
-    summary = _generate_section_summary(chunks, lang_model, chunk_sum)
+    summary = _generate_section_summary(chunks, lang_model, chunk_sum, game_system = title)
 
     try:
         _load_to_Chroma(summary, ascii_collection, embed_model, add_ids = False, title = title, batch_size = chunk_batch)
@@ -822,7 +843,7 @@ def _load_to_Chroma(chunks, collection, embed_model,
             db.add_documents(batch, ids = batch_ids)
             logger.info(f"Batch {i // batch_size + 1}/{-(-len(new_chunks)//batch_size)} complete | {min(i + batch_size, len(new_chunks))}/{len(new_chunks)} chunks added")
         except Exception as e:
-            logger.error(f"Falied on batch {i//batch_size + 1} | {type(e)} | {e}")
+            logger.error(f"Failed on batch {i//batch_size + 1} | {type(e)} | {e}")
             raise
 
 
@@ -969,7 +990,8 @@ def _normalize_scores(scores: list[float], flip: bool = False) -> list[float]:
 
     Flip = True inverts the results, useful for scores where lower = higher similarity
     '''
-    if not scores: return []
+    # if not scores: return []
+    if len(scores) == 0: return []
 
     min_s = min(scores)
     max_s = max(scores)
@@ -1097,11 +1119,11 @@ def _rag_response(message, history, lang_model, retriever):
         | StrOutputParser()
     )
 
-    reponse = ""
+    response = ""
     try:
         for chunk in chain.stream({"question": message, "history": lc_history}):
-            reponse += chunk
-            yield reponse
+            response += chunk
+            yield response
     except chromadb.errors.InvalidArgumentError as e:
         logger.critical(f"Unable to return message | check embeddeing model being used | {e}")
         return f"Error generating response"
@@ -1130,6 +1152,18 @@ def _query_wants_table(msg: str) -> bool:
     return any(signal in msg_lower for signal in table_signals)
 
 
+
+def start_chroma_server(path: str | pathlib.Path, port: int):
+    '''
+    This will start the ChromaDB server. 
+
+    Will need to test this on Windows and Linux to make sure the thing works
+    '''
+    # chroma run --path str(path) --port {port}
+
+
+
+
 def update_metadata(hr_collection, title, new_tags):
     '''
     Updates the metadata with new tags.
@@ -1151,10 +1185,10 @@ def update_metadata(hr_collection, title, new_tags):
     
     updated_metadatas = []
 
-    for meta in local_result["metadatas"]:
-        old_tags = set(meta.get("tags", "").split(",")) - {""} # this strips the empty string. Useful for if "tags" is empty.
-        merged_tags = old_tags | new_tags
-        updated_meta = {**meta, "tags": ",".join(sorted(merged_tags))}  # unpack, sort the list, and join the whole thing into a string
+    for meta_chunk in local_result["metadatas"]:
+        old_tags = set(meta_chunk.get("tags", "")) - {""} # set(meta.get("tags", "").split(",")) - {""} # this strips the empty string. Useful for if "tags" is empty.
+        merged_tags: set = old_tags | new_tags
+        updated_meta = {**meta_chunk, "tags": fill_list(list(sorted(merged_tags))) }# ",".join(sorted(merged_tags))}  # unpack, sort the list, and join the whole thing into a string
         updated_metadatas.append(updated_meta)
 
     local_collection.update(ids = local_result["ids"], metadatas =  updated_metadatas)

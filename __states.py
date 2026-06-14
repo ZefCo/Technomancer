@@ -20,7 +20,8 @@ IMAGES = tuple([SETTINGS["chatbot"]["user"], SETTINGS["chatbot"]["bot"]])
 TAGS = SETTINGS["metadata"]["metadata"]
 DBOH_SETTINGS = SETTINGS["database"]
 DBOH = SETTINGS["database"]["default_path"]
-DBOH_ALT = SETTINGS["database"]["alternative_paths"]
+DBOH_PORT = SETTINGS["database"]["default_port"]
+DBOH_ALT = dict(zip([DBOH] + SETTINGS["database"]["alternative_paths"], [DBOH_PORT] + SETTINGS["database"]["alternative_ports"]))
 
 # DBOH_SETTINGS = import_setting(cwd / "Settings" / "DB_Settings.yaml")
 
@@ -45,6 +46,7 @@ chunk_summary_state: int = gr.State(value = DBOH_SETTINGS["chunk_summary_state"]
 
 # Paths to databases
 db_paths_list_state: str = gr.State(value = DBOH)
+db_paths_dict_state: dict = gr.State(value = DBOH)
 # default message for typing
 default_message_state: str = gr.State(value = "Type in a new rule system/collection")
 # list of the documents for the selected rule system/collection
