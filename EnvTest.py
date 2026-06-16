@@ -86,6 +86,13 @@ except Exception as e:
     print("Cannot find PDF Plumber installed, please install either via Anaconda or pip")
     print(f"\tError type {type(e)}\n\tError: {e}")
     passed = False
+
+try:
+    from rank_bm25 import BM25Okapi
+except Exception as e:
+    print("Cannot find Rand BM25 installed, please install it via pip")
+    print(f"\tError type {type(e)}\n\tError: {e}")
+    passed = False
     
 try:
     import re
@@ -98,6 +105,13 @@ try:
     import socket
 except Exception as e:
     print("Cannot find Socket installed, please install either via Anaconda or pip")
+    print(f"\tError type {type(e)}\n\tError: {e}")
+    passed = False
+
+try:
+    import toml
+except Exception as e:
+    print("Cannot find Toml installed, please install it via anaconda or pip")
     print(f"\tError type {type(e)}\n\tError: {e}")
     passed = False
     

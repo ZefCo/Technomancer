@@ -41,3 +41,6 @@ UI_Testing/__pycache__
 
 # This data doesn't need to be stored. Ever.
 Users.toml
+
+# Because it's growing so much, I'm removing test.ipynb from the commit
+Cold_Storage/__test.ipynb

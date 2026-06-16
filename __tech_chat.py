@@ -16,7 +16,8 @@ from __states import (avatars_state,
                       name_embed_state, name_k_state, name_lang_state, name_threshold_state,
                       prefix_state,
                       rule_system_state, 
-                      threshold_state, true_state)
+                      threshold_state, true_state,
+                      user_state)
 
 from __rag_pipeline import find_documents, find_document
 
@@ -28,11 +29,16 @@ def create_chat():
     '''
     
     with gr.Blocks() as chat:
+        # user_info = {"user_name": user_state}
+        # logger = logger.LoggerAdapter(logger, user_info)
+        # with gr.Sidebar(position = "left", open = False) as sidebar:
+        #     logout = gr.Button("Logout", link = "/logout")
+
         with gr.Row():
             try:
                 chatbot = gr.Chatbot(buttons = ["copy_all"])
             except Exception as e:
-                logger.critical(f"Error at initializing chatbot | Commonly caused by using Gradio version < 6 | {type(e)} | {e}")
+                logger.critical(f"{user_state} | Error at initializing chatbot | Commonly caused by using Gradio version < 6 | {type(e)} | {e}")
                 print("Critical Error, check logs for error - possible cause: using Gradio < Gradio 6")
                 import sys
                 sys.exit()
