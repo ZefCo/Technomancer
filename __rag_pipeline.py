@@ -9,6 +9,8 @@ import chromadb
 
 from functools import lru_cache
 
+import gradio as gr
+
 from langchain_chroma import Chroma
 
 from langchain_community.document_loaders import PDFPlumberLoader, TextLoader, UnstructuredCSVLoader, UnstructuredEPubLoader, UnstructuredWordDocumentLoader, UnstructuredMarkdownLoader
@@ -23,6 +25,8 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableBranch, RunnableLambda, RunnablePassthrough
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownHeaderTextSplitter
+
+from __log_context import set_current_user
 
 import ollama
 
@@ -166,10 +170,12 @@ def create_collection(collection: str):
         logger.info(f"Successfully created collection in database")
 
     
-def delete_collection(hr_collection, nuclear_option: bool = False):
+def delete_collection(hr_collection, request: gr.Request,
+                      nuclear_option: bool = False):
     '''
     Deletes an entire collection of documents.
     '''
+    set_current_user(request.username)
     if hr_collection is None:
         return None
 
@@ -191,7 +197,7 @@ def delete_collection(hr_collection, nuclear_option: bool = False):
 
 
 
-def delete_document(hr_collection, metadata):
+def delete_document(hr_collection, metadata, request: gr.Request):
     '''
     Deletes a document in the database. Does so by finding everything with matching metadata and deleting it. Searches on the source of the data, which is hopefully reliable.
 
@@ -199,6 +205,7 @@ def delete_document(hr_collection, metadata):
 
     Metadata is really the title. The variable is named as such because it's pulling from the metadata toget the title.
     '''
+    set_current_user(request.username)
     client = _get_client()
     
     ascii_collection = _clean_collection(hr_collection)
@@ -287,11 +294,12 @@ def find_collections():
     return collections
 
 
-def find_document(document: str, hr_collection: str):
+def find_document(document: str, hr_collection: str, request: gr.Request):
     '''
     Returns the number of chunks related to the documented selected. This outputs to the log.
     '''
     from random import randint
+    set_current_user(request.username)
 
     ascii_collection = _clean_collection(hr_collection)
     client = _get_client()
@@ -302,16 +310,17 @@ def find_document(document: str, hr_collection: str):
 
     # This will return a dictionary of ['ids', 'embeddings', 'documents', 'uris', 'included', 'data', 'metadatas']
 
-    logger.info(f"{hr_collection} | {document} | Found {len(local_chunks['ids'])} | {local_chunks['metadatas']}")
-    logger.info(f"Random Document | {local_chunks['documents'][random_chunk]}")
+    # logger.info(f"{hr_collection} | {document} | Found {len(local_chunks['ids'])} | {local_chunks['metadatas']}")
+    # logger.info(f"Random Document | {local_chunks['documents'][random_chunk]}")
 
 
 
 # Log if the collections found are empyt or not. Send lenth of list of titles to log.
-def find_documents(hr_collection):
+def find_documents(hr_collection, reqeust: gr.Request):
     '''
     Finds all available documents in a given collection. Feed in the human readable collection title.
     '''
+    set_current_user(reqeust.username)
     titles = set()
     ascii_collection = _clean_collection(hr_collection)
 
@@ -466,10 +475,11 @@ def _get_hybrid_retriever(hr_collection: str, embed_model: str,
 #     return MergerRetriever(retrievers = retrievers)
 
 
-def get_metadata(hr_collection: str, title: str):
+def get_metadata(hr_collection: str, title: str, request: gr.Request):
     '''
     Gets the metadata for a given document.
     '''
+    set_current_user(request.username)
     ascii_collection = _clean_collection(hr_collection)
     client = _get_client()
     collection = client.get_collection(name = ascii_collection)
@@ -1164,12 +1174,13 @@ def start_chroma_server(path: str | pathlib.Path, port: int):
 
 
 
-def update_metadata(hr_collection, title, new_tags):
+def update_metadata(hr_collection: str, title: str, new_tags: list, request: gr.Request):
     '''
     Updates the metadata with new tags.
 
     This updates individual chunks, so it is theoretically possible to target specific chunks for different metadata.
     '''
+    set_current_user(request.username)
     # new_tags = ",".join(new_tags)
     new_tags = set(new_tags)
     ascii_collection = _clean_collection(hr_collection)

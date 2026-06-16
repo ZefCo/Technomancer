@@ -14,6 +14,9 @@ def create_log():
     Creates a tab to check if the logs.
     '''
     with gr.Blocks() as logs:
+        # with gr.Sidebar(position = "left", open = False) as sidebar:
+        #     logout = gr.Button("Logout", link = "/logout")
+
         log_fe = gr.FileExplorer(label = "List of Log Files. Most rescent ones will be at the bottom", root_dir = str(cwd / "Logs"), file_count = "single", glob = "*.log", height = 100)
         # log_dd = gr.Dropdown(choices = [], label = "Log Files", info = "Looks at log files. Will live stream those files.")
         log_box = gr.TextArea(label = "Log File Stream", interactive = False, lines = 100)

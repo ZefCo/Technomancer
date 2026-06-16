@@ -5,8 +5,12 @@ import pathlib
 
 cwd = pathlib.Path.cwd()
 logger = logging.getLogger(__name__)
+# from __states import user_state
 
 import gradio as gr
+user_state: str = gr.State(value = "Generic User")
+
+from __log_context import set_current_user
 
 # import ollama
 import os
@@ -22,11 +26,14 @@ import yaml
 
 # logger = logging.getLogger(__name__)
 # Add logging here to make sure things are being added properly.
+# user_info = {"user_name": user_state}
+# logger = logger.LoggerAdapter(logger, user_info)
 
-def append_state_list(states: list, state: list | str):
+def append_state_list(states: list, state: list | str, request: gr.Request):
     '''
     Updates a state list with a new stat added.
     '''
+    set_current_user(request.username)
     logger.info(f"{state} | {states} | {type(state)}")
     if isinstance(state, str): states = set([state]) | set(states)
     elif isinstance(state, list): states = set(state) | set(states)
@@ -66,18 +73,19 @@ def change_state_list(state_list):
     return state_list
 
 
-def change_state(new_state: str | int | float, old_state: str | int | float | None = None, 
-                 log_info: bool = False, state_name: str = "State"):
+def change_state(new_state: str | int | float, request: gr.Request,
+                 old_state: str | int | float | None = None, log_info: bool = False, state_name: str = "State"):
     '''
     Changes the state.
     '''
     if log_info:
-        caller_frame = inspect.currentframe().f_back
-        caller_code = caller_frame.f_code
+        set_current_user(request.username)
+        # caller_frame = inspect.currentframe().f_back
+        # caller_code = caller_frame.f_code
 
-        func_name = caller_code.co_name
-        file_name = caller_code.co_filename
-        logger.info(f"{file_name} | {func_name} | {state_name} changed | Old State: {old_state} | New State: {new_state}")
+        # func_name = caller_code.co_name
+        # file_name = caller_code.co_filename
+        logger.info(f"{state_name} changed | Old State: {old_state} | New State: {new_state}")
     return new_state
 
 
@@ -211,6 +219,12 @@ def find_models():
 #                 response += chunk["message"]["content"]
 #                 yield response
 
+
+def get_username(request: gr.Request):
+    '''
+    Gets the username.
+    '''
+    return request.username
 
 
 def import_settings():
@@ -392,10 +406,12 @@ def toggle_state(state):
 #     return chunk
 
 
-def update_drop_down(choices: list, choice: str | None = None):
+def update_drop_down(choices: list, request: gr.Request, 
+                     choice: str | None = None):
     '''
     Updates a drop down menu. Useful for rule systems, documents, and model choices
     '''
+    set_current_user(request.username)
     if choices and choice:
         # logger.info(f"Updating drop down | {choices} | {choice}") 
         return gr.Dropdown(choices = choices, value = choice)
@@ -447,12 +463,28 @@ def update_textbox_label(label):
     return gr.Textbox(label = label)
 
 
-def user_submit(user_msg, chat_history, *args, **kwargs):
+def user_submit(user_msg, chat_history, request: gr.Request,
+                *args, **kwargs):
+    '''
+    '''
+    set_current_user(request.username)
     user_msg = _extract_content(user_msg)  # normalize incoming content
     chat_history.append({"role": "user", "content": user_msg})
     chat_history.append({"role": "assistant", "content": ""})
     return "", chat_history
 
+
+def user_logins():
+    '''
+    This is not the ideal way to do this, but this is also meant as a simple project for just a few people.
+    '''
+    with open(cwd / "Settings" / "Users_temp.toml", "r") as file:
+        loggins = toml.load(file)
+
+    admin_loggins: dict = [(user, loggin) for user, loggin in loggins["admin"].items()]
+    user_loggins: dict = [(user, loggin) for user, loggin in loggins["users"].items()]
+
+    return admin_loggins, user_loggins
 
 # if __name__ in "__main__":
 #     setup_logs(pathlib.Path(basename(__file__)).stem)

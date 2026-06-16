@@ -35,6 +35,10 @@ def create_upload():
     '''
     
     with gr.Blocks() as upload:
+        # with gr.Sidebar(position = "left", open = False) as sidebar:
+        #     user = gr.Textbox(value = "Username", label = "Username")
+        #     logout = gr.Button("Logout", link = "/logout")
+
         local_embedding_state = gr.State(value = "")  # this is just because I don't want to import gradio to __rag_pipeline.py
         
         with gr.Row(equal_height = True):
@@ -54,6 +58,8 @@ def create_upload():
                 with gr.Row():
                     metadata_tags_dd = gr.Dropdown(choices = [], label = "Tags to organize documents", multiselect = True, allow_custom_value = True, scale = 5, interactive = True)
                     save_tags = gr.Button(value = "Save Tags", scale = 1)
+
+                chunking_type_check = gr.CheckboxGroup(choices = ["Chunk", "Summary", "Both"], value = "Both")
 
             with gr.Column(variant = "panel"):
                 gr.Markdown("## Chunks")
@@ -86,16 +92,19 @@ def create_upload():
                         gr.Markdown("Note on Deletion: This deletes all things based on the file name of the book. If the book name is close enough to [an]other book[s], it is possible that the other book[s] will be delete too! Check to make sure that the books you want to stay in the database are in fact still there!")
 
                     with gr.Row():
-                            available_rule_systems_dd = gr.Dropdown(choices = [], label = "Choose Collection", interactive = True, scale = 10)
-                            available_documents_textbox = gr.Textbox(label = "Docs Found", value = "", scale = 1)
+                        available_rule_systems_dd = gr.Dropdown(choices = [], label = "Choose Collection", interactive = True, scale = 10)
+                        available_documents_textbox = gr.Textbox(label = "Docs Found", value = "", scale = 1)
 
-                            available_documents_dd = gr.Dropdown(choices = [], label = "List of available documents in selected collection", interactive = True, scale = 15)
-
-                            delete_document_btn = gr.Button(value = "Delete Selected Document", scale = 1)
+                        available_documents_dd = gr.Dropdown(choices = [], label = "List of available documents in selected collection", interactive = True, scale = 15)
+                    
+                        delete_document_btn = gr.Button(value = "Delete Selected Document", scale = 1)
 
                     with gr.Row():
                         more_metadata_dd = gr.Dropdown(label = "Tags on current document, select additional tags. This does not update the master list, only the document selected.", choices = [], interactive = True, multiselect = True, scale = 15, allow_custom_value = True)
-                        more_metadata_btn = gr.Button(value = "Add Metadata", scale = 1)
+                        with gr.Column():
+                            more_metadata_btn = gr.Button(value = "Add Metadata", scale = 1)
+                            enrich_document_btn = gr.Button(value = "Auto Apply Metadata", scale = 1)
+                            gen_summary_btn = gr.Button(value = "Regenerate Summary", scale = 1)
                         local_embedding_box = gr.Textbox(label = "Embedding used for document", value = "", scale = 3)
 
 

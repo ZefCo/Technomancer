@@ -9,12 +9,11 @@ timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     
 log_dir = cwd / "Logs"
 log_dir.mkdir(parents = True, exist_ok = True)
+logger = setup_logs(log_dir / f"Technomancer__{timestamp}.log", level = logging.INFO)
     
 # logger = logging.getLogger(__name__)
     
-logger = setup_logs(log_dir / f"Technomancer__{timestamp}.log", level = logging.INFO)
 # logger_debug = setup_logs(log_dir / f"Technomancer_DEBUG_{timestamp}.log")
-
 
 import gradio as gr
 
@@ -32,8 +31,9 @@ from __states import (avatars_state,
                       rule_system_state, rule_systems_list_state, 
                       settings_path_tags_state, 
                       tags_list_state, true_state, threshold_state,
-                      upload_status_state,
-                      server_name, server_port)
+                      upload_status_state, user_state,
+                      server_name, server_port,
+                      ALL_USERS)
 
 
 import __tech_about as tech_about
@@ -41,12 +41,14 @@ from __tech_chat import create_chat
 from __tech_fn import update_drop_down, update_textbox, update_slider, update_number
 from __tech_upload import create_upload
 from __tech_logs import create_log
+from __log_context import set_current_user
 
 
 def launch_technomancer():
 
-    with gr.Blocks(title = "Technomancer vBeta") as Technomancer:
+    with gr.Blocks(title = "Technomancer v1.1pre") as Technomancer:
         # This is meant to better share states
+        # because of how many state variables I'm juggeling, I'm going to keep them alphabitized.
         avatars_state.render()
         chunk_summary_state.render(), chunk_batches_state.render(), chunk_overlap_state.render(), chunk_size_state.render(), 
         db_paths_list_state.render(), default_message_state.render(), documents_list_state.render(), db_paths_dict_state.render(),
@@ -59,11 +61,23 @@ def launch_technomancer():
         tags_list_state.render()
         settings_path_tags_state.render()
         threshold_state.render()
+        user_state.render(), upload_status_state.render()
         true_state.render(), false_state.render()
-        upload_status_state.render()
 
+        def user_name(req: gr.Request):
+            '''
+            '''
+            username = req.username if req and hasattr(req, "username") else "anonymous"
+            set_current_user(username)
+            return username
 
-        # because of how many state variables I'm juggeling, I'm going to keep them alphabitized.
+        with gr.Sidebar(position = "left", open = False):
+            with gr.Column():
+                user_box = gr.Textbox(value = "Anonymous", label = "Username", visible = True)
+                logout = gr.Button("Logout", link = "/logout")
+
+        Technomancer.load(fn = user_name, outputs = user_state).then(fn = update_textbox, inputs = [user_state], outputs = [user_box])
+
         with gr.Tabs():
 
             with gr.Tab(label = "About/Manual"):
@@ -74,7 +88,7 @@ def launch_technomancer():
                     TECH_CHAT, chat_components = create_chat()
                 except Exception as e:
                     # log that chat cannot be loaded properly.
-                    logger.critical(f"Something went wrong when starting Chat Tab | Error type {type(e)} | {e}")
+                    logger.critical(f"{user_state} | Something went wrong when starting Chat Tab | Error type {type(e)} | {e}")
                     raise RuntimeError("Cannot load Chat Tab")
 
 
@@ -86,7 +100,7 @@ def launch_technomancer():
                     raise RuntimeError("Cannot load Upload Tab")
                 except Exception as e:
                     # loga that upload tab cannot be loaded properly.
-                    logger.critical(f"Something went wrong when starting Upload Tab | Error type {type(e)} | {e}")
+                    logger.critical(f"{user_state} | Something went wrong when starting Upload Tab | Error type {type(e)} | {e}")
                     raise RuntimeError("Cannot load Upload Tab")
                 
             with gr.Tab(label = "Logs") as log_tab:
@@ -102,4 +116,4 @@ def launch_technomancer():
 
 if __name__ in "__main__":
     Technomancer = launch_technomancer()
-    Technomancer.launch(server_name = server_name, server_port = server_port)
+    Technomancer.launch(server_name = server_name, server_port = server_port, auth = ALL_USERS)

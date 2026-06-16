@@ -4,13 +4,16 @@ import gradio as gr
 # import os
 import pathlib
 from __rag_pipeline import find_collections
-from __tech_fn import import_settings, sort_models
+from __tech_fn import import_settings, sort_models, user_logins, user_state
 
 logger = logging.getLogger(__name__)
 logger.info(f"Reading States file @ (time to be implemented)")
 cwd = pathlib.Path.cwd()
 
 SETTINGS = import_settings()
+
+ADMIN, USERS = user_logins()
+ALL_USERS = ADMIN + USERS
 
 RULE_SYSTEMS = find_collections()  # this will be the various collections in the database.
 # DBOH = load_paths()
@@ -89,6 +92,7 @@ tags_list_state: list = gr.State(value = TAGS)
 threshold_state: float = gr.State(value = DBOH_SETTINGS["threshold_state"])
 
 upload_status_state: str = gr.State(value = "")
+user_state = user_state  # this is me trying to get around the circular import issues
 
 true_state: bool = gr.State(value = True)
 false_state: bool = gr.State(value = False)

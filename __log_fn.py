@@ -1,15 +1,29 @@
 import logging
 import pathlib
+from __log_context import get_current_user
+
 cwd = pathlib.Path.cwd()
+
+
+class UserContextFilter(logging.Filter):
+    '''
+    This puts the current user into the log files.
+    '''
+    def filter(self, record):
+        record.user = get_current_user()
+        return True
+
 
 def setup_logs(log_file: pathlib.Path, level = logging.DEBUG):
     '''
     This initializes the logs to go to one file. This is the most convinent way to do the logs. It captures everything.
     '''
-
+    handler = logging.FileHandler(log_file)
+    handler.addFilter(UserContextFilter())
     logging.basicConfig(level = level,
-                        format = "%(asctime)s | %(levelname)-8s | %(name)s | %(funcName)s | %(message)s",
-                        handlers = [logging.FileHandler(log_file)])
+                        # format = "%(asctime)s | %(levelname)-8s | %(user_name)s | %(name)s | %(funcName)s | %(message)s",
+                        format = "%(asctime)s | %(levelname)-8s | %(user)s | %(name)s | %(funcName)s | %(message)s",
+                        handlers = [handler])
 
 
 # I'm leaving this here in case I change my mind and want to consider multiple different log files going to several different areas. That would be great for
