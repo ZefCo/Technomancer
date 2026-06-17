@@ -29,7 +29,7 @@ from __states import (avatars_state,
                       name_chunksize_state, name_embed_state, name_k_state, name_lang_state, name_rule_state, named_chunkoverlap_state, name_tags_state, name_threshold_state, name_chunkbatch_state, name_chunksum_state,
                       percent_state, prefix_state,
                       rule_system_state, rule_systems_list_state, 
-                      settings_path_tags_state, 
+                      save_chunk_state, save_sum_state, settings_path_tags_state, 
                       tags_list_state, true_state, threshold_state,
                       upload_status_state, user_state,
                       server_name, server_port,
@@ -59,7 +59,7 @@ def launch_technomancer():
         percent_state.render(), prefix_state.render()
         rule_system_state.render(), rule_systems_list_state.render()
         tags_list_state.render()
-        settings_path_tags_state.render()
+        save_chunk_state.render(), save_sum_state.render(), settings_path_tags_state.render()
         threshold_state.render()
         user_state.render(), upload_status_state.render()
         true_state.render(), false_state.render()

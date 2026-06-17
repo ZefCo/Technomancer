@@ -87,6 +87,7 @@ except Exception as e:
     print(f"\tError type {type(e)}\n\tError: {e}")
     passed = False
 
+
 try:
     from rank_bm25 import BM25Okapi
 except Exception as e:
@@ -112,6 +113,13 @@ try:
     import toml
 except Exception as e:
     print("Cannot find Toml installed, please install it via anaconda or pip")
+    print(f"\tError type {type(e)}\n\tError: {e}")
+    passed = False
+
+try:
+    import unstructured
+except Exception as e:
+    print("Cannot find Unstructured installed, please install it via pip")
     print(f"\tError type {type(e)}\n\tError: {e}")
     passed = False
     
