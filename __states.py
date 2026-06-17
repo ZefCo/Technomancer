@@ -86,6 +86,8 @@ rule_systems_list_state: list = gr.State(value = RULE_SYSTEMS)
 rule_system_state: str = gr.State(value = RULE_SYSTEMS[0] if RULE_SYSTEMS else None)
 # logger.info(f"Rule System State | {rule_system_state}")
 
+save_chunk_state: bool = gr.State(value = True)
+save_sum_state: bool = gr.State(value = True)
 settings_path_tags_state: str = gr.State(value = "Tags.yaml")
 
 tags_list_state: list = gr.State(value = TAGS)

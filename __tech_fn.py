@@ -116,6 +116,43 @@ def check_path(paths: list):
     return return_paths
 
 
+# def chunking_default(chunking_options: list, request: gr.Request):
+#     '''
+#     Determines the types of chunking allowed.
+    
+#     Requires that chunks either be saved or summary saved or both. Something *has* to be saved. Though I guess there can be a debug option with just seeing how the file is being chunked. That's a good idea actually.
+#     '''
+#     set_current_user(request.username)
+#     # if len(chunking_options) == 3:
+#     #     return gr.CheckboxGroup(value = "Both")
+#     # if ["Both", "Chunk", "Summary"]
+#     if "Both" in tuple(chunking_options):
+#         return gr.CheckboxGroup(value = "Both")
+
+
+def chunking_type(chunking_options, request: gr.Request):
+    '''
+    Returns the boolean of what will be chunked.
+    '''
+    set_current_user(request.username)
+
+    if "Both" in chunking_options:
+        logger.info(f"Chunking = {True} | Summary = {True}")
+        return True, True, gr.CheckboxGroup(info = "Will save both Chunks and Summary")
+    if "Chunk" in tuple(chunking_options) and "Summary" in tuple(chunking_options):
+        logger.info(f"Chunking = {True} | Summary = {True}")
+        return True, True, gr.CheckboxGroup(info = "Will save both Chunks and Summary")
+    if "Chunk" in tuple(chunking_options) and "Summary" not in tuple(chunking_options):
+        logger.info(f"Chunking = {True} | Summary = {False}")
+        return True, False, gr.CheckboxGroup(info = "Will save only chunks")
+    if "Chunk" not in tuple(chunking_options) and "Summary" in tuple(chunking_options):
+        logger.info(f"Chunking = {False} | Summary = {True}")
+        return False, True, gr.CheckboxGroup(info = "Will save only summary")
+    if "Chunk" not in tuple(chunking_options) and "Summary" not in tuple(chunking_options):
+        logger.warning(f"Chunking = {False} | Summary = {False}")
+        return False, False, gr.CheckboxGroup(info = "Warning: Nothing has been selected to be saved")
+
+
 def enable_prefix(lang_model: str):
     '''
     '''

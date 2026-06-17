@@ -48,10 +48,10 @@ def _classify_and_tag(msg: str, llm, rules_systems: list[str], available_tags: l
     '''
     Classifies the message and adds the metadata tags to the LMM.
 
-    Tweek this to handle the possibility of different editions. Let the LLM output a list of rules and it can choose the most probable one later.
+    Tweak this to handle the possibility of different editions. Let the LLM output a list of rules and it can choose the most probable one later.
     '''
     prompt = ChatPromptTemplate.from_messages([
-        ("system", f"""Analyze the user query and respond with exactly three lines and nothing else. Do not add preamples, extra lines, or anything else.
+        ("system", f"""Analyze the user query and respond with exactly three lines and nothing else. Do not add preambles, extra lines, or anything else.
          Line 1: Either RULES or GENERAL
          Line 2: Comma-separated relevant tags from this list: {", ".join(available_tags)}, or None
          Line 3: the name of the rule system use from this list: {", ".join(rules_systems)}, or NONE
@@ -154,20 +154,20 @@ def _create_chunks(document, chunk_size, chunk_overlap, *args, **kwargs):
     return chunks
 
 
-# Add to log that this is happeneing
-def create_collection(collection: str):
+# Add to log that this is happening
+def create_collection(hr_collection: str):
     '''
     Creates an empty collection if that collection name is not already in use.
     '''
     logger.info(f"Creating new Collection in Database")
-    collection = _clean_collection(collection)
+    ascii_collection = _clean_collection(hr_collection)
     client = _get_client()
     try:
-        _ = client.get_or_create_collection(name = collection, metadata={"hnsw:space": "cosine"})
+        _ = client.get_or_create_collection(name = ascii_collection, metadata={"hnsw:space": "cosine"})
     except Exception as e:
-        logger.critical(f"Error creating collection {collection} in database")
+        logger.critical(f"Error creating collection {hr_collection} in database | {ascii_collection}")
     else:
-        logger.info(f"Successfully created collection in database")
+        logger.info(f"Successfully created {hr_collection} in database")
 
     
 def delete_collection(hr_collection, request: gr.Request,
@@ -203,7 +203,7 @@ def delete_document(hr_collection, metadata, request: gr.Request):
 
     Again, use the human readable version of the collection name.
 
-    Metadata is really the title. The variable is named as such because it's pulling from the metadata toget the title.
+    Metadata is really the title. The variable is named as such because it's pulling from the metadata to get the title.
     '''
     set_current_user(request.username)
     client = _get_client()
@@ -243,7 +243,7 @@ def _direct_response(message: str, history: list, lang_model: str):
             yield response
 
 
-def _enrich_chunk_metadata(chunks, game_system: str, embed_model: str, llm_model: str | None = None):
+def _enrich_chunk_metadata(chunks, game_system: str, embed_model: str):
     '''
     Tags specific documents with certain tags, making sections easier to identify later.
     '''
@@ -315,12 +315,12 @@ def find_document(document: str, hr_collection: str, request: gr.Request):
 
 
 
-# Log if the collections found are empyt or not. Send lenth of list of titles to log.
-def find_documents(hr_collection, reqeust: gr.Request):
+# Log if the collections found are empty or not. Send length of list of titles to log.
+def find_documents(hr_collection, request: gr.Request):
     '''
     Finds all available documents in a given collection. Feed in the human readable collection title.
     '''
-    set_current_user(reqeust.username)
+    set_current_user(request.username)
     titles = set()
     ascii_collection = _clean_collection(hr_collection)
 
@@ -342,7 +342,7 @@ def find_documents(hr_collection, reqeust: gr.Request):
             if title: titles.add(title)
             else: titles.add(pathlib.Path(item["source"]).stem)  # this is in case the title doesn't have a Title.
         except Exception as e:
-            logger.warning(f"Cannont find title or source in item retreived from collection {hr_collection} | Error type {type(e)} | {e}")
+            logger.warning(f"Cannot find title or source in item retrieved from collection {hr_collection} | Error type {type(e)} | {e}")
         else:
             items += 1
     logger.info(f"Successfully found {items} | collection {ascii_collection}| {hr_collection}")
@@ -374,6 +374,12 @@ def _format_docs(docs):
     return "\n\n".join(formatted)
 
 
+def generate_summary(chunks):
+    '''
+    '''
+
+
+
 def _generate_section_summary(chunks: list, lang_model: str, section_size: int = 10, game_system: str = "Generic") -> list:
     '''
     Generates a summary from an LLM about the chunks.
@@ -399,7 +405,7 @@ def _generate_section_summary(chunks: list, lang_model: str, section_size: int =
         response = ollama.chat(model = lang_model,
                                messages = [{"role": "user",
                                             "content": f"""Summarize the following rulebook sections in 2-5 paragraphs. Generate tables or lists if necessary.
-                                            Forcus on: what rules or mechanics are covered, what a player needs to know, any key terms that should be defined. Be concise but complete.
+                                            Focus on: what rules or mechanics are covered, what a player needs to know, any key terms that should be defined. Be concise but complete.
 
                                             Text:
                                             {combined_text}"""}])
@@ -409,7 +415,7 @@ def _generate_section_summary(chunks: list, lang_model: str, section_size: int =
         
         summary_doc = Document(page_content = summary_text,
                                metadata = {
-                                           "embedding_used": first_chunk.metadata.get("embedding_used", "?"),  # if none, yeild a ? so the user knowns that information is lost.
+                                           "embedding_used": first_chunk.metadata.get("embedding_used", "?"),  # if none, yield a ? so the user knowns that information is lost.
                                            "game_system": game_system,
                                            "tags": fill_list(list(sorted(combined_tags))), # ",".join(sorted(combined_tags)),
                                            "chunk_type": "summary",
@@ -417,12 +423,12 @@ def _generate_section_summary(chunks: list, lang_model: str, section_size: int =
                                            "source_pages": f"{section[0].metadata.get('page', '?')}-{section[-1].metadata.get('page', '?')}",
                                            "original_chunk_count": len(section),
                                            "id": f"{base_id}:{section_index}",
-                                           "Title": f"{first_chunk.metadata.get("Title", game_system)}"  # this will be handeled later, if None, pull from the source file
+                                           "Title": f"{first_chunk.metadata.get("Title", game_system)}"  # this will be handled later, if None, pull from the source file
                                            })
         
         # logger.warning(f"{fill_list(list(sorted(combined_tags)))}")
         summary_docs.append(summary_doc)
-        logger.info(f"Generated summary | {first_chunk.metadata.get('page', '?')} - {section[-1].metadata.get('page', '?')}")
+        logger.info(f"Generated summary | {first_chunk.metadata.get('page', '?')} - {section[-1].metadata.get('page', '?')} | {base_id}:{section_index}")
 
     return summary_docs
 
@@ -466,7 +472,7 @@ def _get_hybrid_retriever(hr_collection: str, embed_model: str,
 
 # def _get_multi_retriever(collections: list[str], k: int = 5):
 #     '''
-#     Returns a single retriever that searches across multiple collections. Mereges results and returns the top k across all of them.
+#     Returns a single retriever that searches across multiple collections. Merges results and returns the top k across all of them.
 #     '''
 #     from langchain_core.retrievers import MergerRetriever
 
@@ -528,6 +534,7 @@ def get_metadata(hr_collection: str, title: str, request: gr.Request):
 #         except Exception as e:
 #             logger.warning(f"Cannont find title or source in item retreived from collection {hr_collection} | Error type {type(e)} | {e}")
 #         else:
+
 
 
 @lru_cache(maxsize = 8)
@@ -734,11 +741,16 @@ def _load_document(file_path, DocLoader):
 
 def load_documents(file, hr_collection, embed_model, lang_model,
                    tags: list | None = None, chunk_size = 512, chunk_overlap = 50, chunk_batch = 50, chunk_sum = 10, 
+                   save_chunks: bool = True, save_summary: bool = True,
                    *args, **kwargs):
     '''
     Loads the document from the input path, then add it to the database.
 
     Part of RAG Input
+
+    if chunks -> gen chunks, save chunks
+    if summary -> gen chunks, gen summary, save summary
+    if both -> gen chunks, save chunks, gen summary, save summary
     '''
     logger.info(f"Loading file | {file} | {hr_collection} | {embed_model} | C Size: {chunk_size} | C Overlap: {chunk_overlap}")
     
@@ -795,22 +807,25 @@ def load_documents(file, hr_collection, embed_model, lang_model,
     
     logger.info(f"Created {len(chunks)} chunks from {file.name} | Enriched with automated metadata")
 
-    summary = _generate_section_summary(chunks, lang_model, chunk_sum, game_system = title)
+    if save_chunks:
+        try:
+            _load_to_Chroma(chunks, ascii_collection, embed_model, tags = tags or [], title = title, batch_size = chunk_batch)
+            logger.info(f"Successfully loaded {file.name} | {hr_collection} | {tags}")
+            # return f"Successfully added {len(chunks)} chunks | {file.name} | {hr_collection}."
+        except Exception as e:
+            logger.error(f"Failed to load chunks to Chroma | {type(e)} | {e}")
+            return f"Error writing to database: {e}"
+        
+    if save_summary:
+        summary = _generate_section_summary(chunks, lang_model, chunk_sum, game_system = title)
 
-    try:
-        _load_to_Chroma(summary, ascii_collection, embed_model, add_ids = False, title = title, batch_size = chunk_batch)
-        logger.info(f"Successfully loaded {file.name} summary | {hr_collection}")
-    except Exception as e:
-        logger.error(f"Failed to load summary to Chroma | {type(e)} | {e}")
-        return f" Error writing summary to database: {e}"
+        try:
+            _load_to_Chroma(summary, ascii_collection, embed_model, add_ids = False, title = title, batch_size = chunk_batch)
+            logger.info(f"Successfully loaded {file.name} summary | {hr_collection}")
+        except Exception as e:
+            logger.error(f"Failed to load summary to Chroma | {type(e)} | {e}")
+            return f" Error writing summary to database: {e}"
 
-    try:
-        _load_to_Chroma(chunks, ascii_collection, embed_model, tags = tags or [], title = title, batch_size = chunk_batch)
-        logger.info(f"Successfully loaded {file.name} | {hr_collection} | {tags}")
-        return f"Successfully added {len(chunks)} chunks | {file.name} | {hr_collection}."
-    except Exception as e:
-        logger.error(f"Failed to load chunks to Chroma | {type(e)} | {e}")
-        return f"Error writing to database: {e}"
 
 
 
@@ -1097,9 +1112,9 @@ def query_rag_routed(message: str, history: list, lang_model: str, embed_model: 
 
 def _rag_response(message, history, lang_model, retriever):
     '''
-    Shared RAG generation logic. Seperated so both query_rag and query_rag_routed can use it without duplication.
+    Shared RAG generation logic. Separated so both query_rag and query_rag_routed can use it without duplication.
 
-    However query_rag is not going to be used in the future, so this is instead a nice way to apply logging logic and find errros.
+    However query_rag is not going to be used in the future, so this is instead a nice way to apply logging logic and find errors.
     '''
     llm = ChatOllama(model = lang_model)
 
@@ -1135,7 +1150,7 @@ def _rag_response(message, history, lang_model, retriever):
             response += chunk
             yield response
     except chromadb.errors.InvalidArgumentError as e:
-        logger.critical(f"Unable to return message | check embeddeing model being used | {e}")
+        logger.critical(f"Unable to return message | check embedding model being used | {e}")
         return f"Error generating response"
     except Exception as e:
         logger.critical(f"Unable to return message | New Error | {type(e)} | {e}")
