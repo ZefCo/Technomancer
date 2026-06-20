@@ -1,8 +1,4 @@
-# The admin level does not have any extras to it right now. This is mostly reserved for later. Or if at all.
-[admin]
-Technomancer = "technomancer"
-
 [users]
-user1 = "password1"
-user2 = "password2"
-user3 = "password3"
+Technomancer = "technomancer"
+William = "Gibson"
+Gary = "Gygax"

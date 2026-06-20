@@ -40,5 +40,5 @@ if __name__ in "__main__":
     TECH_LOG, log_components = create_log()
 else:
     logger = logging.getLogger(__name__)
-    print("Rendered Upload Tab")
-    logger.info("Rendered Upload Tab @ (time to be implemented)")
+    print("Rendered Logs Tab")
+    logger.info("Rendered Logs Tab @ (time to be implemented)")

@@ -29,6 +29,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownHea
 from __log_context import set_current_user
 
 import ollama
+import os
 
 import toml
 
@@ -37,7 +38,10 @@ from rank_bm25 import BM25Okapi
 cwd = pathlib.Path.cwd()
 chroma_database_dir = cwd / "DB_of_Holding"
 
+CHROMA_HOST = os.environ.get("CHROMA_HOST", "localhost")
+CHROMA_PORT = int(os.environ.get("CHROMA_PORT", 8000))
 _chroma_client = None
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 
 with open(cwd / "Settings" / "EnrichTags.toml", "r") as file:
     enrich_keywords = toml.load(file)
@@ -283,15 +287,17 @@ def find_collections():
 
     Checks to see if anything is present. If there is, it will clean up the collection name into a human readable format and return it. If there is nothing, just returns an empty list.
     '''
+    hr_collections = []
     client = _get_client()
-    collections = client.list_collections()
-    if collections: 
-        collections = [human_collection(collection.name) for collection in collections]
-        logger.info(f"Collections found in database: {collections}")
+    ascii_collections = client.list_collections()
+
+    if ascii_collections: 
+        hr_collections = [human_collection(ascii_collection.name) for ascii_collection in ascii_collections]
+        logger.info(f"Collections found in database: {hr_collections}")
     else:
         logger.info(f"No collections found in database")
 
-    return collections
+    return hr_collections
 
 
 def find_document(document: str, hr_collection: str, request: gr.Request):
@@ -423,7 +429,8 @@ def _generate_section_summary(chunks: list, lang_model: str, section_size: int =
                                            "source_pages": f"{section[0].metadata.get('page', '?')}-{section[-1].metadata.get('page', '?')}",
                                            "original_chunk_count": len(section),
                                            "id": f"{base_id}:{section_index}",
-                                           "Title": f"{first_chunk.metadata.get("Title", game_system)}"  # this will be handled later, if None, pull from the source file
+                                           "Title": f"{first_chunk.metadata.get("Title", game_system)}",  # this will be handled later, if None, pull from the source file
+                                           "Pages": f"{first_chunk.metadata.get('page', '?')} - {section[-1].metadata.get('page', '?')}"
                                            })
         
         # logger.warning(f"{fill_list(list(sorted(combined_tags)))}")
@@ -442,8 +449,8 @@ def _get_client():
     # Add connection issues to the client. Send those to the logs
     logger.info(f"Connecting to client")
     global _chroma_client
-    if _chroma_client is None: _chroma_client = chromadb.PersistentClient(path = str(chroma_database_dir))
-    # if _chroma_client is None: _chroma_client = chromadb.HttpClient(path = str(chroma_database_dir))
+    # if _chroma_client is None: _chroma_client = chromadb.PersistentClient(path = str(chroma_database_dir))
+    if _chroma_client is None: _chroma_client = chromadb.HttpClient(host = CHROMA_HOST, port = CHROMA_PORT)
     return _chroma_client
 
 
@@ -455,8 +462,8 @@ def _get_embeddings(embed_model, search_doc = False):
     Part of RAG Input
     '''
     if search_doc:
-        return OllamaEmbeddings(model = embed_model, model_kwargs = {"prompt": "search_document:"})
-    return OllamaEmbeddings(model = embed_model)
+        return OllamaEmbeddings(model = embed_model, model_kwargs = {"prompt": "search_document:"}, base_url=OLLAMA_HOST)
+    return OllamaEmbeddings(model = embed_model, base_url=OLLAMA_HOST)
 
 
 def _get_hybrid_retriever(hr_collection: str, embed_model: str, 
@@ -550,7 +557,8 @@ def _get_retriever(hr_collection: str, embed_model: str,
     if not hr_collection: hr_collection = "Generic"
     ascii_collection = _clean_collection(hr_collection)
     QEM = _get_query_embeddings(embed_model, search_query)
-    db = Chroma(persist_directory = str(chroma_database_dir), embedding_function = QEM, collection_name = ascii_collection)
+    # db = Chroma(persist_directory = str(chroma_database_dir), embedding_function = QEM, collection_name = ascii_collection)
+    db = Chroma(client=_get_client(), embedding_function = QEM, collection_name = ascii_collection)
 
     search_kwargs = {"k": k}
 
@@ -587,7 +595,8 @@ def _get_summary_retriever(hr_collection: str, embed_model: str,
     '''
     ascii_collection = _clean_collection(hr_collection)
 
-    db = Chroma(persist_directory=str(chroma_database_dir), embedding_function=_get_query_embeddings(embed_model), collection_name=ascii_collection)
+    # db = Chroma(persist_directory=str(chroma_database_dir), embedding_function=_get_query_embeddings(embed_model), collection_name=ascii_collection)
+    db = Chroma(client=_get_client(), embedding_function=_get_query_embeddings(embed_model), collection_name=ascii_collection)
 
     filters = [{"game_system": hr_collection}, {"chunk_type": "summary"}]
 
@@ -610,8 +619,8 @@ def _get_query_embeddings(embeddings: str, search_query: bool = False):
     This allows for the use of the search query prefix in nomic-embed-text. The others, mixed bread and snowflake artic, will come eventually.
     '''
     if search_query:
-        return OllamaEmbeddings(model = embeddings, model_kwargs = {"prompt": "search_query:"})
-    return OllamaEmbeddings(model = embeddings)
+        return OllamaEmbeddings(model = embeddings, model_kwargs = {"prompt": "search_query:"}, base_url=OLLAMA_HOST)
+    return OllamaEmbeddings(model = embeddings, base_url=OLLAMA_HOST)
 
 
 def _gradio_history_to_langchain(history: list):
@@ -685,7 +694,8 @@ def _hybrid_search(question: str, hr_collection: str, embed_model: str,
     bm25 = BM25Okapi(tokenized)
     bm25_scores = bm25.get_scores(question.lower().split())
 
-    db = Chroma(persist_directory=str(chroma_database_dir), embedding_function=_get_embeddings(embed_model), collection_name=ascii_collection)
+    # db = Chroma(persist_directory=str(chroma_database_dir), embedding_function=_get_embeddings(embed_model), collection_name=ascii_collection)
+    db = Chroma(client=_get_client(), embedding_function=_get_embeddings(embed_model), collection_name=ascii_collection)
     semantic_results = db.similarity_search_with_score(question, k = len(all_docs), filter = where_filter)
 
     semantic_score_map = {result.metadata.get("id", ""): score for result, score in semantic_results}
@@ -838,7 +848,8 @@ def _load_to_Chroma(chunks, collection, embed_model,
     Part of RAG Input
     '''
     hr_collection = human_collection(collection)
-    db = Chroma(persist_directory = str(chroma_database_dir), embedding_function = _get_embeddings(embed_model), collection_name = collection)  # get embeddings here never uses the search doc prefix. Think about turning that on at some point.
+    # db = Chroma(persist_directory = str(chroma_database_dir), embedding_function = _get_embeddings(embed_model), collection_name = collection)  # get embeddings here never uses the search doc prefix. Think about turning that on at some point.
+    db = Chroma(client=_get_client(), embedding_function = _get_embeddings(embed_model), collection_name = collection)  # get embeddings here never uses the search doc prefix. Think about turning that on at some point.
 
     if add_ids: chunks = _metadata_IDs(chunks)
 
@@ -1047,7 +1058,8 @@ def query_rag_routed(message: str, history: list, lang_model: str, embed_model: 
     available_tags = enrich_keywords  # because I'm lazy and don't want to change the variable right now.
     rule_systems = find_collections()
 
-    llm = ChatOllama(model = lang_model)
+    # llm = ChatOllama(model = lang_model)
+    llm = ChatOllama(model = lang_model, base_url = OLLAMA_HOST)
 
     classification, extracted_tags, extracted_rule_system  = _classify_and_tag(message, llm, rule_systems, available_tags)
 
@@ -1116,7 +1128,8 @@ def _rag_response(message, history, lang_model, retriever):
 
     However query_rag is not going to be used in the future, so this is instead a nice way to apply logging logic and find errors.
     '''
-    llm = ChatOllama(model = lang_model)
+    # llm = ChatOllama(model = lang_model)
+    llm = ChatOllama(model = lang_model, base_url = OLLAMA_HOST)
 
     prompt = ChatPromptTemplate.from_messages([("system", """
                                                 Rulebook context has been retrieved and is provided below. Use it if it is relevant to the question. 
