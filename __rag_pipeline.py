@@ -380,6 +380,54 @@ def _format_docs(docs):
     return "\n\n".join(formatted)
 
 
+def _extract_page_filter_angled(page) -> str:
+    '''
+    '''
+
+
+def _extract_two_column_page(page, 
+                             percent = 0.2) -> str:
+    '''
+    '''
+    words = page.extract_words()
+    if not words:
+        return ""
+
+    # this finds the column split by looking for a gap in x-position density
+    x_positions = sorted(set(round(w["x0"] / 10) * 10 for w in words))
+
+    # finds the largest gap in x positions
+    page_width = page.width
+    mid = page_width / 2
+
+    # Look for a gap within % of the center
+    gap_start = mid * (1.0 - percent)
+    gap_end = mid * (1.0 + percent)
+
+    gaps = []
+
+    for i in range(len(x_positions) - 1):
+        if gap_start <= x_positions[i] <= gap_end:
+            gap_size = x_positions[i + 1] - x_positions[i]
+            gaps.append((gap_size, x_positions[i]))
+
+    # if there's a gap, get the largest gap found
+    if gaps:
+        split_x = max(gaps, key = lambda g: g[0])[1] + 5
+    else:
+        split_x = page_width / 2
+
+    # seperate into columns and sort each by reading order
+    left = sorted([w for w in words if w['x0'] < split_x], key = lambda w: (round(w['top'] / 5) * 5, w['x0']))
+    right = sorted([w for w in words if w['x0'] >= split_x], key = lambda w: (round(w['top'] / 5) * 5, w['x0']))
+
+    left_text = " ".join(w['text'] for w in left)
+    right_text = " ".join(w['text'] for w in right)
+
+    return f"{left_text}\n\n{right_text}".strip()
+
+
+
 def generate_summary(chunks):
     '''
     '''
@@ -749,6 +797,42 @@ def _load_document(file_path, DocLoader):
     return document
 
 
+def _load_document_column_aware(file_path: pathlib.Path) -> list:
+    '''
+    '''
+    import pdfplumber
+    documents = []
+
+    with pdfplumber.open(str(file_path)) as pdf:
+        for i, page in enumerate(pdf.pages):
+            words = page.extract_words()
+            if not words: continue
+
+            x_positions = [w['x0'] for w in words]
+            page_width = page.width
+            mid = page_width / 2
+
+            left_count = sum(1 for x in x_positions if x < mid * 0.85)
+            right_count = sum(1 for x in x_positions if x > mid * 1.15)
+            center_count = sum(1 for x in x_positions if mid * 0.85 <= x <= mid * 1.15)
+
+            is_two_column = (left_count > 20 and right_count > 20 and center_count < (left_count + right_count) * 1.15)
+
+            if is_two_column:
+                text: str = _extract_two_column_page(page)
+                extraction_method = "two_column"
+            else:
+                text: str = page.extract_table() or ""
+                extraction_method = "standard"
+            
+            if text.strip():
+                documents.append(Document(page_content=text, metadata = {"source": str(file_path), "page": i, "extraction_method": extraction_method}))
+
+            logger.info(f"Page {i}: {extraction_method} extraction | {len(text)} chars")
+
+    return documents
+
+
 def load_documents(file, hr_collection, embed_model, lang_model,
                    tags: list | None = None, chunk_size = 512, chunk_overlap = 50, chunk_batch = 50, chunk_sum = 10, 
                    save_chunks: bool = True, save_summary: bool = True,
@@ -777,9 +861,10 @@ def load_documents(file, hr_collection, embed_model, lang_model,
         ".docx": UnstructuredWordDocumentLoader, 
         ".epub": UnstructuredEPubLoader, 
         ".md": UnstructuredMarkdownLoader,
-        ".pdf": PDFPlumberLoader, 
+        ".pdf": PDFPlumberLoader, # this is kinda not used much anymore, because of the possibility of dual columns.
         ".txt": TextLoader, 
                   }
+    
     DocLoader = suffix_map.get(file.suffix)
 
     if DocLoader is None:
@@ -787,9 +872,10 @@ def load_documents(file, hr_collection, embed_model, lang_model,
         return f"Error: Unsupported file type: {file.suffix}"
     
     logger.info(f"Document loader set to {DocLoader.__name__}")
-            
+
     try:
-       document = _load_document(file, DocLoader)
+       if file.suffix == ".pdf": document = _load_document_column_aware(file)
+       else: document = _load_document(file, DocLoader)
     except Exception as e:
         logger.error(f"Failed to load document | {file} | {type(e)} | {e}")
         return f"Error loading file: {type(e)}"
@@ -835,8 +921,6 @@ def load_documents(file, hr_collection, embed_model, lang_model,
         except Exception as e:
             logger.error(f"Failed to load summary to Chroma | {type(e)} | {e}")
             return f" Error writing summary to database: {e}"
-
-
 
 
 def _load_to_Chroma(chunks, collection, embed_model, 
@@ -901,7 +985,6 @@ def _looks_like_stat_block(text: str) -> bool:
     ]
     matches = sum(1 for p in patterns if re.search(p, text, re.IGNORECASE))
     return matches >= 2  # at least two stat indicators
-
 
 
 def _looks_like_table(text: str) -> bool:
