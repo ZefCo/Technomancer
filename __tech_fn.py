@@ -5,15 +5,13 @@ import pathlib
 
 cwd = pathlib.Path.cwd()
 logger = logging.getLogger(__name__)
-# from __states import user_state
 
 import gradio as gr
-user_state: str = gr.State(value = "Generic User")
 
 from __log_context import set_current_user
 
 # import ollama
-import os
+# import os
 
 import re
 
@@ -26,7 +24,6 @@ import yaml
 
 # logger = logging.getLogger(__name__)
 # Add logging here to make sure things are being added properly.
-# user_info = {"user_name": user_state}
 # logger = logger.LoggerAdapter(logger, user_info)
 
 def append_state_list(states: list, state: list | str, request: gr.Request):
@@ -116,6 +113,43 @@ def check_path(paths: list):
     return return_paths
 
 
+# def chunking_default(chunking_options: list, request: gr.Request):
+#     '''
+#     Determines the types of chunking allowed.
+    
+#     Requires that chunks either be saved or summary saved or both. Something *has* to be saved. Though I guess there can be a debug option with just seeing how the file is being chunked. That's a good idea actually.
+#     '''
+#     set_current_user(request.username)
+#     # if len(chunking_options) == 3:
+#     #     return gr.CheckboxGroup(value = "Both")
+#     # if ["Both", "Chunk", "Summary"]
+#     if "Both" in tuple(chunking_options):
+#         return gr.CheckboxGroup(value = "Both")
+
+
+def chunking_type(chunking_options, request: gr.Request):
+    '''
+    Returns the boolean of what will be chunked.
+    '''
+    set_current_user(request.username)
+
+    if "Both" in chunking_options:
+        logger.info(f"Chunking = {True} | Summary = {True}")
+        return True, True, gr.CheckboxGroup(info = "Will save both Chunks and Summary")
+    if "Chunk" in tuple(chunking_options) and "Summary" in tuple(chunking_options):
+        logger.info(f"Chunking = {True} | Summary = {True}")
+        return True, True, gr.CheckboxGroup(info = "Will save both Chunks and Summary")
+    if "Chunk" in tuple(chunking_options) and "Summary" not in tuple(chunking_options):
+        logger.info(f"Chunking = {True} | Summary = {False}")
+        return True, False, gr.CheckboxGroup(info = "Will save only chunks")
+    if "Chunk" not in tuple(chunking_options) and "Summary" in tuple(chunking_options):
+        logger.info(f"Chunking = {False} | Summary = {True}")
+        return False, True, gr.CheckboxGroup(info = "Will save only summary")
+    if "Chunk" not in tuple(chunking_options) and "Summary" not in tuple(chunking_options):
+        logger.warning(f"Chunking = {False} | Summary = {False}")
+        return False, False, gr.CheckboxGroup(info = "Warning: Nothing has been selected to be saved")
+
+
 def enable_prefix(lang_model: str):
     '''
     '''
@@ -165,25 +199,37 @@ def _extract_content(content) -> str:
     return str(content)
 
 
-def find_models():
+def find_models(ollama_port):
     '''
     Finds all the models that are installed on the computer. Meant to be run when the server starts.
     '''
-    result = None
+    import requests
+    from requests.exceptions import ConnectionError as CE
+
     try:
-        result = subprocess.run(['ollama', 'list'], capture_output = True, text = True)
+        response = requests.get(f'http://ollama:{ollama_port}/api/tags')
+    except CE as e:
+
+        try:
+            response = requests.get(f"http://localhost:{ollama_port}/api/tags")
+        except CE as e:
+            logger.critical(f"Ollama is not running | Failed both docker and localhost connection request")
+            raise FileNotFoundError
+        except Exception as e:
+            logger.critical(f"Error when trying to connect to Ollama localhost | {type(e)} | {e}")
+            raise FileNotFoundError
+
     except Exception as e:
-        logger.critical(f"Subprocess command to Ollama failed | {type(result)}")
+        logger.critical(f"Ollama client response failed | {type(e)} | {e}")
         raise FileNotFoundError
-    if len(result.stderr) > 0: logger.critical(f"Errors when pulling Ollama modes | {result.stderr}")
-    # Shut down system? Raise error?
     
-    lines = result.stdout.strip().splitlines()[1:]  # Skip header line
+    try:
+        model_list = response.json().get('models', [])
+    except Exception as e:
+        logger.critical(f"Ollama model list failed | {type(e)} | {e} | {type(response)} | {response}")
+        raise type(e)
     
-    models = [line.split()[0] for line in lines]  # Get model names from the first column
-    logger.info(f"Found Models at runtime | {models}")
-    
-    return models
+    return model_list
 
 
 # # Logging should be here, but not sure how. Esepcially since this is related to the query routing.
@@ -317,7 +363,7 @@ def list_length(lst):
 #     return tags["tags"]
 
 
-def sort_models(embedding_models):
+def sort_models(embedding_models, ollama_port):
     '''
     Sorts them between embedding and language models. There is a (non comprehensive) list of embedding models, and if one of them is found it is tagged as an
     embedding mode. Again, this is non comprehensive, so that list may need to be adjusted on a per user basis.
@@ -331,20 +377,23 @@ def sort_models(embedding_models):
     language: list = []
     embedding: list = []
     try:
-        models = find_models()
+        models: list[dict] = find_models(ollama_port)
     except FileNotFoundError as e:
         logger.critical(f"Check if Ollama is installed and running")
         raise FileNotFoundError
     except Exception as e:
         logger.critical(f"New error | {type(e)} | {e}")
+        print(e)
         raise type(e)
+    
+    # logger.warning(f"Models pulled | {models}")
 
     for model in models:
         for em in embedding_models:
-            if re.search(em, model): 
-                embedding.append(model)
+            if re.search(em, model["name"]): 
+                embedding.append(model["name"])
                 break
-        else: language.append(model)
+        else: language.append(model["name"])
 
     logger.info(f"{language} | {embedding}")
 
@@ -481,10 +530,9 @@ def user_logins():
     with open(cwd / "Settings" / "Users_temp.toml", "r") as file:
         loggins = toml.load(file)
 
-    admin_loggins: dict = [(user, loggin) for user, loggin in loggins["admin"].items()]
     user_loggins: dict = [(user, loggin) for user, loggin in loggins["users"].items()]
 
-    return admin_loggins, user_loggins
+    return user_loggins
 
 # if __name__ in "__main__":
 #     setup_logs(pathlib.Path(basename(__file__)).stem)

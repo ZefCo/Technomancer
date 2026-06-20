@@ -20,11 +20,11 @@ from __states import (chunk_overlap_state, chunk_size_state, chunk_summary_state
                       percent_state, 
                       rule_system_state, rule_systems_list_state, 
                       tags_list_state, true_state,
-                      settings_path_tags_state,
+                      save_chunk_state, save_sum_state,
                       upload_status_state)
 
 from __tech_fn import (append_state_list, 
-                       change_state, change_state_list, 
+                       change_state, change_state_list, chunking_type,
                        export_tags, 
                        list_length, 
                        update_slider, update_textbox,  update_drop_down)
@@ -59,7 +59,8 @@ def create_upload():
                     metadata_tags_dd = gr.Dropdown(choices = [], label = "Tags to organize documents", multiselect = True, allow_custom_value = True, scale = 5, interactive = True)
                     save_tags = gr.Button(value = "Save Tags", scale = 1)
 
-                chunking_type_check = gr.CheckboxGroup(choices = ["Chunk", "Summary", "Both"], value = "Both")
+                chunking_type_check = gr.CheckboxGroup(label = "Save Chunks/Summary/Both", choices = ["Chunk", "Summary", "Both"], value = "Both", interactive = True, info = "Will save both Chunks and Summary")
+                refresh_rules_btn_1 = gr.Button(value = "Refresh Rules List")
 
             with gr.Column(variant = "panel"):
                 gr.Markdown("## Chunks")
@@ -93,6 +94,8 @@ def create_upload():
 
                     with gr.Row():
                         available_rule_systems_dd = gr.Dropdown(choices = [], label = "Choose Collection", interactive = True, scale = 10)
+                        refresh_rules_btn_2 = gr.Button(value = "Refresh Rules List", scale = 1)
+
                         available_documents_textbox = gr.Textbox(label = "Docs Found", value = "", scale = 1)
 
                         available_documents_dd = gr.Dropdown(choices = [], label = "List of available documents in selected collection", interactive = True, scale = 15)
@@ -120,11 +123,6 @@ def create_upload():
                         with gr.Column():
                             gr.Markdown("Embedding Model choice. If you have multiple databases, this can be used with different embedding models and switch between the two. Not fully implemented yet.")
                             embed_models_dd = gr.Dropdown(label = "Embedding Models", choices = [], info = "Choice of embedding model. Only for advanced uses.", interactive = True)
-
-                        with gr.Column():
-                            gr.Markdown("Note this has not be implemented yet as I need to figure out how to pass all this information to and from Gradio. Will use Settings files probably.")
-                            list_of_db_dd = gr.Dropdown(info =  "Not implemented yet", label = "Choose Database", choices = [], interactive = True)
-                            db_path_space = gr.Markdown("Reserved for Create Path to Database option. (Not implemented yet. Button? Textbox? Dropdowns? Not sure what to do here.)")
                         
                         with gr.Column():
                             gr.Markdown("Langauge choice for summary of sections. Consider keeping it with your primary language model, but if you want to use a different one, go ahead.")
@@ -140,6 +138,7 @@ def create_upload():
         c_overlap_slide.change(fn = change_state, inputs = [c_overlap_slide, chunk_overlap_state, true_state, named_chunkoverlap_state], outputs = [chunk_overlap_state])  # this used to update both the chunk size and overlap. Now this just updates the overlap.
         c_summary_slide.change(fn = change_state, inputs = [c_summary_slide, chunk_summary_state, true_state, name_chunksum_state], outputs = [chunk_summary_state])
         c_batch_slide.change(fn = change_state, inputs = [c_batch_slide, chunk_batches_state, true_state, name_chunkbatch_state], outputs = [chunk_batches_state])
+        chunking_type_check.input(fn = chunking_type, inputs = [chunking_type_check], outputs = [save_chunk_state, save_sum_state, chunking_type_check])
 
         del_collection_btn.click(fn = delete_collection, inputs = [available_rule_systems_dd], outputs = [rule_system_state]).then(fn = find_collections, outputs = [rule_systems_list_state]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [rule_systems_dd]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [available_rule_systems_dd]).then(fn = update_textbox, inputs = [rule_system_state], outputs = [selected_rule_system])  #.then(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_list_state]).then(fn = update_drop_down, inputs = [documents_list_state], outputs = [available_documents_dd]).then(fn = list_length, inputs = [documents_list_state], outputs = [available_documents_textbox])
         delete_document_btn.click(fn = delete_document, inputs = [available_rule_systems_dd, available_documents_dd]).then(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_list_state]).then(fn = update_drop_down, inputs = [documents_list_state], outputs = [available_documents_dd])
@@ -151,13 +150,15 @@ def create_upload():
 
         rule_system_add_btn.click(fn = change_state, inputs = [rule_systems_dd, rule_system_state, true_state, name_rule_state], outputs = [rule_system_state]).then(fn = create_collection, inputs = [rule_system_state]).then(fn = append_state_list, inputs = [rule_systems_list_state, rule_system_state], outputs = [rule_systems_list_state]).then(fn = update_drop_down, inputs = [rule_systems_list_state, rule_system_state], outputs = [rule_systems_dd]).then(fn = update_drop_down, inputs = [rule_systems_list_state, rule_system_state], outputs = [available_rule_systems_dd]).then(update_textbox, inputs = [rule_system_state], outputs = [selected_rule_system])
 
+        refresh_rules_btn_2.click(fn = find_collections, outputs = [rule_systems_list_state]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [available_rule_systems_dd]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [rule_systems_dd])
+        refresh_rules_btn_1.click(fn = find_collections, outputs = [rule_systems_list_state]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [available_rule_systems_dd]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [rule_systems_dd])
         rule_systems_dd.select(fn = change_state, inputs = [rule_systems_dd, rule_system_state, true_state, name_rule_state], outputs = [rule_system_state]).then(fn = update_textbox, inputs = [rule_system_state], outputs = [selected_rule_system])
         
         save_tags.click(fn = append_state_list, inputs = [tags_list_state, metadata_tags_dd], outputs = [tags_list_state]).then(fn = update_drop_down, inputs = [tags_list_state], outputs = [metadata_tags_dd]).then(fn = export_tags, inputs = [tags_list_state])
 
         lang_model_sum_dd.select(fn = change_state, inputs = [lang_model_sum_dd, lang_model_state, true_state, name_lang_state], outputs = [lang_model_state])
 
-        upload_file_space.upload(fn = change_state, inputs = [rule_systems_dd], outputs = [rule_system_state]).then(fn = append_state_list, inputs = [rule_systems_list_state, rule_system_state], outputs = [rule_systems_list_state]).then(fn = update_drop_down, inputs = [rule_systems_list_state, rule_system_state], outputs = [rule_systems_dd]).then(fn = update_drop_down, inputs = [rule_systems_list_state, rule_system_state], outputs = available_rule_systems_dd).then(fn = load_documents, inputs = [upload_file_space, rule_system_state, embed_model_state, lang_model_state, metadata_tags_dd, chunk_size_state, chunk_overlap_state, chunk_batches_state, chunk_summary_state], outputs = [upload_status_box])
+        upload_file_space.upload(fn = change_state, inputs = [rule_systems_dd], outputs = [rule_system_state]).then(fn = append_state_list, inputs = [rule_systems_list_state, rule_system_state], outputs = [rule_systems_list_state]).then(fn = update_drop_down, inputs = [rule_systems_list_state, rule_system_state], outputs = [rule_systems_dd]).then(fn = update_drop_down, inputs = [rule_systems_list_state, rule_system_state], outputs = available_rule_systems_dd).then(fn = load_documents, inputs = [upload_file_space, rule_system_state, embed_model_state, lang_model_state, metadata_tags_dd, chunk_size_state, chunk_overlap_state, chunk_batches_state, chunk_summary_state, save_chunk_state, save_sum_state], outputs = [upload_status_box])
 
     return upload, {
         "chunk_batch": c_batch_slide,
@@ -167,7 +168,6 @@ def create_upload():
         "embed_models_dd": embed_models_dd, 
         "embed_textbox": embed_textbox, 
         "lang_model_sum_dd": lang_model_sum_dd,
-        "list_of_db_dd": list_of_db_dd, 
         "metadata_tags_dd": metadata_tags_dd, 
         "rule_systems_dd_1": available_rule_systems_dd, 
         "rule_systems_dd_2": rule_systems_dd, 

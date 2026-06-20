@@ -1,0 +1,29 @@
+# Don't need these in docker container, it will make its own
+/__pychache__
+/.vscode
+
+# This is for depreciated things
+/Cold_Storage
+
+# The database is moving to another chroma container in docker
+/DB_of_Holding*
+/Folder_of_Holding
+
+# This is for note taking.
+/Docker_Information
+/"Issues and Tasks"
+/Other
+
+# This was for fun. Might delete
+/Personalities
+Modelfile_Comicbook_Guy
+Modelfile_Technomancer
+
+# Not needed as this is getting its own volume
+/Logs
+
+# License can be just on github
+LICENSE
+
+# Note necessary, but was a good note taking thing.
+requirements_OG.txt
