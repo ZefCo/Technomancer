@@ -58,7 +58,6 @@ Add metadata to documents after ingestion                                       
 Change yaml to env files                                                                           , git   , 5/30/26, Low     , 
 Add advanced features to upload tab                                                                , ui    , 5/31/26, Medium  , 5/31/26
 Make paths to additional databases optional                                                        , rag   , 5/31/26, Medium  , 5/31/26
-Link embedding model choice and database choice with yaml file and state variables                 , rag   , 5/31/26, Medium  , 
 Go through variables and declare them consistently throughout all pages                            , git   , 5/31/26, Medium  , 6/1/26
 Reject unsuported documents                                                                        , rag   , 6/1/26 , Medium  , 6/3/26
 Need to add all inputs/outputs for append stat list function calls - two are wrong                 , ui    , 6/2/26 , Low     , 6/2/26
@@ -81,9 +80,9 @@ Fix rule system drop down getting the whole list and not just one system        
 Add similarity score threshold for return query                                                    , rag   , 6/4/26 , Medium  , 6/6/26
 Check user message for rule systems and metadata during query                                      , rag   , 6/4/26 , Medium  , 6/6/26
 reimplement deletion of documents                                                                  , rag   , 6/4/26 , High    , 6/5/26
-Add user loggin                                                                                    , ui    , 6/4/26 , Low     , 
+Add user loggin                                                                                    , ui    , 6/4/26 , Low     , 6/15/26
 Reinitialize document list after deletion of a document                                            , ui    , 6/4/26 , Low     , 
-Create new display branch seperate from master                                                     , git   , 6/4/26 , Low     , 
+Create new display branch seperate from master                                                     , git   , 6/4/26 , Low     , 6/15/26
 Add textbox for embedding and language models being used and update when they change               , ui    , 6/4/26 , Medium  , 6/5/26
 Add logging to file deletion to confirm file has been delete                                       , log   , 6/4/26 , High    , 6/5/26
 Fix issues with avatar of chatbot and user                                                         , ui    , 6/5/26 , Low     , 
@@ -91,10 +90,13 @@ Display language and embedding models to user                                   
 Add counter for number of documents in Mangement accordion                                         , ui    , 6/5/26 , Medium  , 6/5/26
 Add ability to adjust k in advanced featuers                                                       , ui    , 6/5/26 , Low     , 6/7/26
 Update tag list inbeteen uses                                                                      , ui    , 6/5/26 , High    , 6/5/26
-If user adds tags to a specific document get those to the master list                              , ui    , 6/6/26 , Low     ,
-Get error for using wrong embedding to query database                                              , git   , 6/6/26 , Low     ,
+If user adds tags to a specific document get those to the master list                              , ui    , 6/6/26 , Low     , 
+Get error for using wrong embedding to query database                                              , git   , 6/6/26 , Low     , 
 Add ability to adjust score threshold in advanced features                                         , ui    , 6/6/26 , Low     , 6/7/26
 Save k chunks and threshold in settings between uses                                               , ui    , 6/7/26 , Medium  , 6/7/26
 Live stream log file(s) into new tab                                                               , log   , 6/7/26 , High    , 6/7/26
-Prefix documents (add in ability to turn on or off)                                                , rag   , 6/7/26 , Medium  ,
-Selectivly add metadata tags to documents                                                          , rag   , 6/7/26 , Medium  ,
+Prefix documents (add in ability to turn on or off)                                                , rag   , 6/7/26 , Medium  , 
+Selectivly add metadata tags to documents                                                          , rag   , 6/7/26 , Medium  , 
+Adjust to Docker                                                                                   , docker, 6/18/26, High    , 6/18/26
+Have Rules and Tags lists be global across all users                                               , docker, 6/18/26, Low     , 6/18/26
+Have language and embedding model lists but global across all users                                , docker, 6/18/26, Low     , 

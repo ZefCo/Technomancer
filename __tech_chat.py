@@ -15,11 +15,10 @@ from __states import (avatars_state,
                       lang_model_state, lang_models_list_state, 
                       name_embed_state, name_k_state, name_lang_state, name_threshold_state,
                       prefix_state,
-                      rule_system_state, 
-                      threshold_state, true_state,
-                      user_state)
+                      rule_system_state, rule_systems_list_state,
+                      threshold_state, true_state)
 
-from __rag_pipeline import find_documents, find_document
+from __rag_pipeline import find_documents, find_document, find_collections
 
 from __tech_fn import change_state, technomancer_response, update_drop_down, update_textbox, user_submit, list_length, enable_prefix, toggle_state
 
@@ -29,7 +28,6 @@ def create_chat():
     '''
     
     with gr.Blocks() as chat:
-        # user_info = {"user_name": user_state}
         # logger = logger.LoggerAdapter(logger, user_info)
         # with gr.Sidebar(position = "left", open = False) as sidebar:
         #     logout = gr.Button("Logout", link = "/logout")
@@ -38,7 +36,7 @@ def create_chat():
             try:
                 chatbot = gr.Chatbot(buttons = ["copy_all"])
             except Exception as e:
-                logger.critical(f"{user_state} | Error at initializing chatbot | Commonly caused by using Gradio version < 6 | {type(e)} | {e}")
+                logger.critical(f"Error at initializing chatbot | Commonly caused by using Gradio version < 6 | {type(e)} | {e}")
                 print("Critical Error, check logs for error - possible cause: using Gradio < Gradio 6")
                 import sys
                 sys.exit()
@@ -50,10 +48,10 @@ def create_chat():
             with gr.Column(scale = 1):
             
                 with gr.Row():
-                    save_btn = gr.Button(value = "Export Chat to DBoH (not implimented yet)")
+                    save_btn = gr.Button(value = "Export Chat to DBoH (not implemented yet)")
             
                 with gr.Row():
-                    clear_btn = gr.ClearButton([msg_box, chatbot], value = "Clear Chat")
+                    clear_btn = gr.ClearButton([msg_box, chatbot], value = "Clear Chat (not implemented yet)")
             
                 with gr.Row():
                     stop_btn = gr.Button(value = "Stop")
@@ -75,8 +73,9 @@ def create_chat():
                 with gr.Row(equal_height = True):
                     # use_rag_check = gr.Checkbox(label = "Look at Rulebooks & Notes", value = False, info = "When enabled, Technomancer will search the available rule systems for answers.", visible = False)
 
-                    available_rule_systems_dd = gr.Dropdown(label = "Rule System", choices = [], interactive = True, scale = 10)
+                    rule_systems_dd = gr.Dropdown(label = "Rule System", choices = [], interactive = True, scale = 10)
                     available_documents_textbox = gr.Textbox(label = "Docs Found", value = "", scale = 1)
+                    refresh_rules_btn = gr.Button(value = "Refresh Rules List", scale = 1)
 
                     available_documents_dd = gr.Dropdown(label = "Available Documents in Selected Rule System (for reference).", choices = [], interactive = True, scale = 15)
 
@@ -95,11 +94,10 @@ def create_chat():
                         threshold = gr.Slider(label="Cosine Similarity Threshold", minimum=0, maximum=2, step=0.001, scale = 10, info="0 -> totally similar, 2 -> complete opposite")
                 # # update_khold = gr.Button(value = "Update K and Threshold", scale = 3)
 
-
-        available_rule_systems_dd.select(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_list_state]).then(fn = update_drop_down, inputs = [documents_list_state], outputs = [available_documents_dd]).then(fn = list_length, inputs = [documents_list_state], outputs = [available_documents_textbox])
-        available_documents_dd.select(fn = find_document, inputs = [available_documents_dd, available_rule_systems_dd])
+        rule_systems_dd.select(fn = find_documents, inputs = [rule_systems_dd], outputs = [documents_list_state]).then(fn = update_drop_down, inputs = [documents_list_state], outputs = [available_documents_dd]).then(fn = list_length, inputs = [documents_list_state], outputs = [available_documents_textbox])
+        available_documents_dd.select(fn = find_document, inputs = [available_documents_dd, rule_systems_dd])
         
-        chat_response = msg_box.submit(user_submit, [msg_box, chatbot], [msg_box, chatbot], queue = False).then(fn = technomancer_response, inputs = [chatbot, lang_model_choice_dd, embedding_choice_dd, available_rule_systems_dd, metadata_tags_dd, k_state, threshold_state], outputs = [chatbot])
+        chat_response = msg_box.submit(user_submit, [msg_box, chatbot], [msg_box, chatbot], queue = False).then(fn = technomancer_response, inputs = [chatbot, lang_model_choice_dd, embedding_choice_dd, rule_systems_dd, metadata_tags_dd, k_state, threshold_state], outputs = [chatbot])
         
         embedding_choice_dd.select(fn = change_state, inputs = [embedding_choice_dd, embed_model_state, true_state, name_embed_state], outputs = [embed_model_state]).then(fn = update_textbox, inputs = [embed_model_state], outputs = [embed_textbox]).then(fn = enable_prefix, inputs = [embed_model_state], outputs = [prefix_check, prefix_box])
 
@@ -109,13 +107,15 @@ def create_chat():
 
         prefix_check.select(fn = toggle_state, inputs = [prefix_state], outputs = [prefix_state])
 
+        refresh_rules_btn.click(fn = find_collections, outputs = [rule_systems_list_state]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [rule_systems_dd])
+
         stop_btn.click(fn = None, inputs = None, outputs = None, cancels = [chat_response])
 
         threshold.change(fn = change_state, inputs = [threshold, threshold_state, true_state, name_threshold_state], outputs = [threshold_state])
 
-    return chat, {"embed_models_dd": embedding_choice_dd, "embed_textbox": embed_textbox, "k": k_num, "lang_models_dd": lang_model_choice_dd, "lang_textbox": lang_textbox, "metadata_tags_dd": metadata_tags_dd, "rule_systems_dd": available_rule_systems_dd, "threshold": threshold}
-    # return chat, {"embed_models_dd": embedding_choice_dd, "embed_textbox": embed_textbox, "lang_models_dd": lang_model_choice_dd, "lang_textbox": lang_textbox, "metadata_tags_dd": metadata_tags_dd, "rule_systems_dd": available_rule_systems_dd, "threshold": threshold}
-    # return chat, {"embed_models_dd": embedding_choice_dd, "embed_textbox": embed_textbox, "lang_models_dd": lang_model_choice_dd, "lang_textbox": lang_textbox, "metadata_tags_dd": metadata_tags_dd, "rule_systems_dd": available_rule_systems_dd}
+    return chat, {"embed_models_dd": embedding_choice_dd, "embed_textbox": embed_textbox, "k": k_num, "lang_models_dd": lang_model_choice_dd, "lang_textbox": lang_textbox, "metadata_tags_dd": metadata_tags_dd, "rule_systems_dd": rule_systems_dd, "threshold": threshold}
+    # return chat, {"embed_models_dd": embedding_choice_dd, "embed_textbox": embed_textbox, "lang_models_dd": lang_model_choice_dd, "lang_textbox": lang_textbox, "metadata_tags_dd": metadata_tags_dd, "rule_systems_dd": rule_systems_dd, "threshold": threshold}
+    # return chat, {"embed_models_dd": embedding_choice_dd, "embed_textbox": embed_textbox, "lang_models_dd": lang_model_choice_dd, "lang_textbox": lang_textbox, "metadata_tags_dd": metadata_tags_dd, "rule_systems_dd": rule_systems_dd}
 
 
 if __name__ in "__main__":

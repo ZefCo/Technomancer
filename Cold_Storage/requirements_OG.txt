@@ -31,7 +31,7 @@ ollama
     pip install ollama (for python library)
 pdfplumber
     pip install pdfplumber
-rand_bm25
+rank_bm25
     pip install rank-bm25
 toml
     anaconda
