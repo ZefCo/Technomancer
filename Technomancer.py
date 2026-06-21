@@ -4,6 +4,7 @@ from __log_context import set_current_user
 from __log_fn import setup_logs
 from datetime import datetime
 import logging
+import sys
 
 cwd = pathlib.Path.cwd()
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -12,6 +13,8 @@ log_dir = cwd / "Logs"
 log_dir.mkdir(parents = True, exist_ok = True)
 logger = setup_logs(log_dir / f"Technomancer__{timestamp}.log", level = logging.INFO)
 
+if len(sys.argv) > 1 and sys.argv[1] == "DEBUG": server_port = 7861
+else: server_port = 7860
 # logger = logging.getLogger(__name__)
     
 # logger_debug = setup_logs(log_dir / f"Technomancer_DEBUG_{timestamp}.log")
@@ -35,17 +38,17 @@ try:
                         upload_status_state,
                         ALL_USERS)
 except Exception as e:
-    print(f"{e}")
+    print(f"{e} | unable to start - shutting down")
     import sys
     sys.exit()
 
 
 import __tech_about as tech_about
-from __tech_chat import create_chat
 from __tech_fn import update_drop_down, update_textbox, update_slider, update_number
+from __tech_chat import create_chat
 from __tech_upload import create_upload
+from __tech_db import create_db
 from __tech_logs import create_log
-from __log_context import set_current_user
 
 
 def launch_technomancer():
@@ -84,7 +87,6 @@ def launch_technomancer():
         Technomancer.load(fn = user_name, inputs = [true_state], outputs = [user_box])
 
         with gr.Tabs():
-
             with gr.Tab(label = "About/Manual"):
                 tech_about.about.render()
             
@@ -97,7 +99,7 @@ def launch_technomancer():
                     raise RuntimeError("Cannot load Chat Tab")
 
 
-            with gr.Tab(label = "Database of Holding") as upload_tab:
+            with gr.Tab(label = "Upload") as upload_tab:
                 try:
                     TECH_UPLOAD, upload_components = create_upload()
                 except TypeError as e:
@@ -108,11 +110,19 @@ def launch_technomancer():
                     logger.critical(f"Something went wrong when starting Upload Tab | Error type {type(e)} | {e}")
                     raise RuntimeError("Cannot load Upload Tab")
                 
+            with gr.Tab(label = "Database of Holding") as db_tab:
+                try:
+                    TECH_DB, db_components = create_db()
+                except Exception as e:
+                    logger.critical(f"Something went wrong when starting Database Mangement Tab | Error type {type(e)} | {e}")
+                    raise RuntimeError("Cannot load Database Tab")
+                
             with gr.Tab(label = "Logs") as log_tab:
                 TECH_LOG, log_components = create_log()
 
-        chat_tab.select(fn = update_drop_down, inputs = [embed_models_list_state, embed_model_state], outputs = [chat_components["embed_models_dd"]]).then(fn = update_drop_down, inputs = [lang_models_list_state, lang_model_state], outputs = [chat_components["lang_models_dd"]]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [chat_components["rule_systems_dd"]]).then(fn = update_textbox, inputs = [lang_model_state], outputs = [chat_components["lang_textbox"]]).then(fn = update_textbox, inputs = [embed_model_state], outputs = [chat_components["embed_textbox"]]).then(fn = update_drop_down, inputs = [tags_list_state], outputs = [chat_components["metadata_tags_dd"]]).then(fn = update_slider, inputs = [threshold_state], outputs = [chat_components["threshold"]]).then(fn = update_number, inputs = [k_state], outputs = [chat_components["k"]])
-        upload_tab.select(fn = update_drop_down, inputs = [embed_models_list_state, embed_model_state], outputs = [upload_components["embed_models_dd"]]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [upload_components["rule_systems_dd_1"]]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [upload_components["rule_systems_dd_2"]]).then(fn = update_textbox, inputs = [embed_model_state], outputs = [upload_components["embed_textbox"]]).then(fn = update_drop_down, inputs = [tags_list_state], outputs = [upload_components["metadata_tags_dd"]]).then(fn = update_drop_down, inputs = [lang_models_list_state], outputs = upload_components["lang_model_sum_dd"]).then(fn = update_slider, inputs = [chunk_batches_state], outputs = [upload_components["chunk_batch"]]).then(fn = update_slider, inputs = [chunk_overlap_state], outputs = [upload_components["chunk_overlap"]]).then(fn = update_slider, inputs = [chunk_size_state], outputs = [upload_components["chunk_size"]]).then(fn = update_slider, inputs = [chunk_summary_state], outputs = [upload_components["chunk_sum"]])
+        chat_tab.select(fn = update_drop_down, inputs = [embed_models_list_state, embed_model_state], outputs = [chat_components["embed_models_dd"]]).then(fn = update_drop_down, inputs = [lang_models_list_state, lang_model_state], outputs = [chat_components["lang_models_dd"]]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [chat_components["rule_systems_dd"]]).then(fn = update_textbox, inputs = [lang_model_state], outputs = [chat_components["lang_textbox"]]).then(fn = update_drop_down, inputs = [tags_list_state], outputs = [chat_components["metadata_tags_dd"]]).then(fn = update_slider, inputs = [threshold_state], outputs = [chat_components["threshold"]]).then(fn = update_number, inputs = [k_state], outputs = [chat_components["k"]]) #.then(fn = update_textbox, inputs = [embed_model_state], outputs = [chat_components["embed_textbox"]])
+        upload_tab.select(fn = update_drop_down, inputs = [embed_models_list_state, embed_model_state], outputs = [upload_components["embed_models_dd"]]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [upload_components["rule_systems_dd_2"]]).then(fn = update_drop_down, inputs = [tags_list_state], outputs = [upload_components["metadata_tags_dd"]]).then(fn = update_drop_down, inputs = [lang_models_list_state], outputs = upload_components["lang_model_sum_dd"]).then(fn = update_slider, inputs = [chunk_batches_state], outputs = [upload_components["chunk_batch"]]).then(fn = update_slider, inputs = [chunk_overlap_state], outputs = [upload_components["chunk_overlap"]]).then(fn = update_slider, inputs = [chunk_size_state], outputs = [upload_components["chunk_size"]]).then(fn = update_slider, inputs = [chunk_summary_state], outputs = [upload_components["chunk_sum"]])  #.then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [upload_components["rule_systems_dd_1"]]) # .then(fn = update_textbox, inputs = [embed_model_state], outputs = [upload_components["embed_textbox"]])
+        db_tab.select(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [db_components["rule_systems_dd"]])
         log_tab.select()
 
 
@@ -121,4 +131,4 @@ def launch_technomancer():
 
 if __name__ in "__main__":
     Technomancer = launch_technomancer()
-    Technomancer.launch(server_name = "0.0.0.0", server_port = 7860, auth = ALL_USERS)
+    Technomancer.launch(server_name = "0.0.0.0", server_port = server_port, auth = ALL_USERS)

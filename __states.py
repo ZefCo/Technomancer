@@ -17,8 +17,13 @@ ALL_USERS = user_logins()
 try:
     RULE_SYSTEMS = find_collections()  # this will be the various collections in the database.
 except Exception as e:
+    import sys
     print(f"Unable to find rule system - Check if Chroma is Running.\nType error = {type(e)}")
-    raise e
+    if sys.argv[1] == "DEBUG":
+        logger.critical(f"Entering DEBUG mode | Generating dummy rules")
+        RULE_SYSTEMS = ["Dummy Rules 1", "Dummy Rule 2", "Dummy Rules 3"]
+    else:
+        raise e
 # DBOH = load_paths()
 # TAGS = load_tags()
 # IMAGES = import_setting(cwd / "Settings" / "AvatarImages.yaml")
@@ -33,11 +38,14 @@ DBOH_SETTINGS = SETTINGS["database"]
 try:
     LANG_MODELS, EMBED_MODELS = sort_models(tuple(SETTINGS["embedd_models"]["models"]), SETTINGS["ports"]["ollama"])
 except Exception as e:
-    logger.critical(f"Error type {type(e)} | Check if Ollama is installed and running | Creating dummy lists")
-    print(f"Error type {type(e)} | Check if Ollama is installed and running | Creating dummy lists")
-    LANG_MODELS = ["Dummy Language 1", "Dummy Language 2", "Dummy Language 3"]
-    EMBED_MODELS = ["Dummy Embed 1", "Dummy Embed 2", "Dummy Embed 3"]
-
+    import sys
+    print(f"Error type {type(e)} | Check if Ollama is installed and running")
+    if sys.argv[1] == "DEBUG":
+        logger.critical(f"Error type {type(e)} | Check if Ollama is installed and running | Creating dummy lists")
+        LANG_MODELS = ["Dummy Language 1", "Dummy Language 2", "Dummy Language 3"]
+        EMBED_MODELS = ["Dummy Embed 1", "Dummy Embed 2", "Dummy Embed 3"]
+    else:
+        raise e
 
 # <-- Global States -->
 
