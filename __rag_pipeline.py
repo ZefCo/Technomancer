@@ -29,6 +29,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownHea
 from __log_context import set_current_user
 
 import ollama
+import os
 
 import toml
 
@@ -37,7 +38,10 @@ from rank_bm25 import BM25Okapi
 cwd = pathlib.Path.cwd()
 chroma_database_dir = cwd / "DB_of_Holding"
 
+CHROMA_HOST = os.environ.get("CHROMA_HOST", "localhost")
+CHROMA_PORT = int(os.environ.get("CHROMA_PORT", 8000))
 _chroma_client = None
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 
 with open(cwd / "Settings" / "EnrichTags.toml", "r") as file:
     enrich_keywords = toml.load(file)
@@ -150,6 +154,8 @@ def _create_chunks(document, chunk_size, chunk_overlap, *args, **kwargs):
         return None
     else:
         logger.info(f"{len(chunks)} were created from document")
+
+    # logger.critical(f"{type(chunks)}\n{chunks}")
     
     return chunks
 
@@ -237,10 +243,14 @@ def _direct_response(message: str, history: list, lang_model: str):
     completion = ollama.chat(model = lang_model, messages = messages, stream = True)
     response = ""
 
-    for chunk in completion:
-        if "message" in chunk and "content" in chunk["message"]:
-            response += chunk["message"]["content"]
-            yield response
+    try:
+        for chunk in completion:
+            if "message" in chunk and "content" in chunk["message"]:
+                response += chunk["message"]["content"]
+                yield response
+    except Exception as e:
+        logger.critical(f"Unable to generate response | Type: {type(e)} | {e}")
+        raise ZeroDivisionError
 
 
 def _enrich_chunk_metadata(chunks, game_system: str, embed_model: str):
@@ -277,21 +287,88 @@ def _enrich_chunk_metadata(chunks, game_system: str, embed_model: str):
     return chunks
 
 
+
+def find_chunk(hr_collection: str, ids: str, request: gr.Request):
+    '''
+    Gets all the data from the specified chunk
+    '''
+    # set_current_user(request.username)
+    ascii_collection = _clean_collection(hr_collection)
+    client = _get_client()
+    local_collection = client.get_collection(str(ascii_collection))
+
+    local_chunk = local_collection.get(ids = [ids])
+
+    # logger.critical(f"Local Chunk | {local_chunk} | {type(local_chunk)}")
+
+    # I'm keeping this here as the project expands: things will be added or removed depending on the needs of the project
+    # the local chunk is a dictionary with (* means things that will be used):
+    # *ids -> the ids of the chunk
+    # embeddings -> ?
+    # metadatas -> a list with
+        # source -> where it came from. Can be changed to Rule_System:Book_Title
+        # auto_tags -> list
+        # *page -> #
+        # id -> str
+        # *chunk_type -> string
+        # Trapped -> bool
+        # ModData -> datetime
+        # *game_system -> string
+        # Creator -> string
+        # *total_pages -> #
+        # *tags -> list
+        # file_path -> str
+        # *Title -> str
+        # Producer -> str
+        # *embedding_used -> str
+        # source_pages -> str | int -> make sure it's a string
+    # *documents -> list -> maybe only need the first index?
+    # data -> ?
+    # uris -> ?
+    # what was included to find it
+
+    metadata_tags: list = local_chunk["metadatas"][0]["tags"]
+    document_data: str = local_chunk["documents"][0]
+    page_source: str = str(local_chunk["metadatas"][0].get("source_pages", "?"))
+    chunk_type: str = local_chunk["metadatas"][0].get("chunk_type", "?")
+    quality_score: str = local_chunk["metadatas"][0].get("QS", "?")
+
+    return gr.TextArea(value = document_data), gr.Dropdown(value=metadata_tags), gr.Textbox(value = page_source), gr.Textbox(value = chunk_type), gr.Textbox(value = quality_score)
+
+
+
+def find_chunks(hr_collection: str, title: str, just_ids = True):
+    '''
+    Gets all the chunk ids for a given document.
+    '''
+    ascii_collection = _clean_collection(hr_collection)
+    client = _get_client()
+    local_collection = client.get_collection(str(ascii_collection))
+
+    local_chunks = local_collection.get(where = {"Title": title})
+
+    # logger.critical(f"")
+    if just_ids: return local_chunks["ids"], gr.Textbox(value = len(local_chunks["ids"]))
+    else: return local_chunks
+
+
 def find_collections():
     '''
     Returns all collections in the database.
 
     Checks to see if anything is present. If there is, it will clean up the collection name into a human readable format and return it. If there is nothing, just returns an empty list.
     '''
+    hr_collections = []
     client = _get_client()
-    collections = client.list_collections()
-    if collections: 
-        collections = [human_collection(collection.name) for collection in collections]
-        logger.info(f"Collections found in database: {collections}")
+    ascii_collections = client.list_collections()
+
+    if ascii_collections: 
+        hr_collections = [human_collection(ascii_collection.name) for ascii_collection in ascii_collections]
+        logger.info(f"Collections found in database: {hr_collections}")
     else:
         logger.info(f"No collections found in database")
 
-    return collections
+    return hr_collections
 
 
 def find_document(document: str, hr_collection: str, request: gr.Request):
@@ -301,9 +378,10 @@ def find_document(document: str, hr_collection: str, request: gr.Request):
     from random import randint
     set_current_user(request.username)
 
-    ascii_collection = _clean_collection(hr_collection)
-    client = _get_client()
-    local_collection = client.get_collection(str(ascii_collection))
+    # ascii_collection = _clean_collection(hr_collection)
+    # client = _get_client()
+    # local_collection = client.get_collection(str(ascii_collection))
+    local_collection = _get_local_collection(hr_collection)
     local_chunks = local_collection.get(where = {"Title": document})
 
     random_chunk = randint(0, len(local_chunks["ids"]) - 1)
@@ -374,9 +452,86 @@ def _format_docs(docs):
     return "\n\n".join(formatted)
 
 
-def generate_summary(chunks):
+def _extract_page_filter_angled(page) -> str:
     '''
     '''
+
+
+def _extract_two_column_page(page, 
+                             percent = 0.2) -> str:
+    '''
+    '''
+    words = page.extract_words()
+    if not words:
+        return ""
+
+    # this finds the column split by looking for a gap in x-position density
+    x_positions = sorted(set(round(w["x0"] / 10) * 10 for w in words))
+
+    # finds the largest gap in x positions
+    page_width = page.width
+    mid = page_width / 2
+
+    # Look for a gap within % of the center
+    gap_start = mid * (1.0 - percent)
+    gap_end = mid * (1.0 + percent)
+
+    gaps = []
+
+    for i in range(len(x_positions) - 1):
+        if gap_start <= x_positions[i] <= gap_end:
+            gap_size = x_positions[i + 1] - x_positions[i]
+            gaps.append((gap_size, x_positions[i]))
+
+    # if there's a gap, get the largest gap found
+    if gaps:
+        split_x = max(gaps, key = lambda g: g[0])[1] + 5
+    else:
+        split_x = page_width / 2
+
+    # seperate into columns and sort each by reading order
+    left = sorted([w for w in words if w['x0'] < split_x], key = lambda w: (round(w['top'] / 5) * 5, w['x0']))
+    right = sorted([w for w in words if w['x0'] >= split_x], key = lambda w: (round(w['top'] / 5) * 5, w['x0']))
+
+    left_text = " ".join(w['text'] for w in left)
+    right_text = " ".join(w['text'] for w in right)
+
+    return f"{left_text}\n\n{right_text}".strip()
+
+
+
+def generate_summary(hr_collection: str, title: str, embed_model: str, lang_model: str, section_size: int, 
+                     batch_size = 50):
+    '''
+    Can be used to regenerate the summary from the chunks. Needs to filter out anything that is not a summary.
+
+    I need to think about this because if I don't save the chunks, and just generate the summary, how do I get the chunks?
+    '''
+    ascii_collection = _clean_collection(hr_collection)
+    local_collection = _get_local_collection(hr_collection)
+
+    try:
+        local_collection.delete(where = {"Title": title, "chunk_type": "summary"})
+    except ValueError as e:
+        pass   # can be caused by there being nothing in there, which is OK.
+    except Exception as e:
+        logger.critical(f"Error deleting summary for {title} | {hr_collection} | {type(e)} | {e}")
+    
+    chunks = local_collection.get(where = {"Title": title})
+    chunks = [Document(page_content = doc, metadata = meta if meta else {}, id = doc_id) for doc, meta, doc_id in zip(chunks.get("documents", []), chunks.get("metadatas", []), chunks.get("ids", []))]
+
+    # This was saved and processed as a list of Documents
+    
+    # logger.critical(f"{type(chunks)} | {list(chunks.keys())}")
+
+    summary = _generate_section_summary(chunks, lang_model, section_size, hr_collection)
+
+    try:
+        _load_to_Chroma(summary, ascii_collection, embed_model, add_ids = False, title = title, batch_size = batch_size)
+        logger.info(f"Successfully loaded {file.name} summary | {hr_collection}")
+    except Exception as e:
+        logger.error(f"Failed to load summary to Chroma | {type(e)} | {e}")
+        return f" Error writing summary to database: {e}"
 
 
 
@@ -402,13 +557,18 @@ def _generate_section_summary(chunks: list, lang_model: str, section_size: int =
             combined_text = f"{combined_text}\n\n{c.page_content}"
             combined_tags = combined_tags | set(c.metadata["tags"]) #  combined_tags | set(c.metadata["tags"].split(","))
 
-        response = ollama.chat(model = lang_model,
-                               messages = [{"role": "user",
-                                            "content": f"""Summarize the following rulebook sections in 2-5 paragraphs. Generate tables or lists if necessary.
-                                            Focus on: what rules or mechanics are covered, what a player needs to know, any key terms that should be defined. Be concise but complete.
+        try:
+            response = ollama.chat(model = lang_model,
+                                    messages = [{"role": "user",
+                                                "content": f"""Summarize the following rulebook sections in 2-5 paragraphs. Generate tables or lists if necessary.
+                                                Focus on: what rules or mechanics are covered, what a player needs to know, any key terms that should be defined. Be concise but complete.
 
-                                            Text:
-                                            {combined_text}"""}])
+                                                Text:
+                                                {combined_text}"""}])
+        except Exception as e:
+            logger.critical(f"Unable to generate summary | Type: {type(e)} | {e}")
+            raise ZeroDivisionError
+        
         summary_text = response["message"]["content"]
 
         first_chunk = section[0]
@@ -423,7 +583,8 @@ def _generate_section_summary(chunks: list, lang_model: str, section_size: int =
                                            "source_pages": f"{section[0].metadata.get('page', '?')}-{section[-1].metadata.get('page', '?')}",
                                            "original_chunk_count": len(section),
                                            "id": f"{base_id}:{section_index}",
-                                           "Title": f"{first_chunk.metadata.get("Title", game_system)}"  # this will be handled later, if None, pull from the source file
+                                           "Title": f"{first_chunk.metadata.get("Title", game_system)}",  # this will be handled later, if None, pull from the source file
+                                           "Pages": f"{first_chunk.metadata.get('page', '?')} - {section[-1].metadata.get('page', '?')}"
                                            })
         
         # logger.warning(f"{fill_list(list(sorted(combined_tags)))}")
@@ -442,9 +603,19 @@ def _get_client():
     # Add connection issues to the client. Send those to the logs
     logger.info(f"Connecting to client")
     global _chroma_client
-    if _chroma_client is None: _chroma_client = chromadb.PersistentClient(path = str(chroma_database_dir))
-    # if _chroma_client is None: _chroma_client = chromadb.HttpClient(path = str(chroma_database_dir))
+    # if _chroma_client is None: _chroma_client = chromadb.PersistentClient(path = str(chroma_database_dir))
+    if _chroma_client is None: _chroma_client = chromadb.HttpClient(host = CHROMA_HOST, port = CHROMA_PORT)
     return _chroma_client
+
+
+def _get_local_collection(hr_collection):
+    '''
+    '''
+    ascii_collection = _clean_collection(hr_collection)
+    client = _get_client()
+    local_collection = client.get_collection(str(ascii_collection))
+
+    return local_collection
 
 
 @lru_cache(maxsize=4)
@@ -455,8 +626,8 @@ def _get_embeddings(embed_model, search_doc = False):
     Part of RAG Input
     '''
     if search_doc:
-        return OllamaEmbeddings(model = embed_model, model_kwargs = {"prompt": "search_document:"})
-    return OllamaEmbeddings(model = embed_model)
+        return OllamaEmbeddings(model = embed_model, model_kwargs = {"prompt": "search_document:"}, base_url=OLLAMA_HOST)
+    return OllamaEmbeddings(model = embed_model, base_url=OLLAMA_HOST)
 
 
 def _get_hybrid_retriever(hr_collection: str, embed_model: str, 
@@ -494,7 +665,7 @@ def get_metadata(hr_collection: str, title: str, request: gr.Request):
 
     results = collection.get(where = {"Title": title})
     # print(results["metadatas"][0])
-    embedding_used = results["metadatas"][0]["embedding_used"]
+    embedding_used: str = results["metadatas"][0]["embedding_used"] or ""
     tags = set()
 
     for result_tags in results["metadatas"]:
@@ -517,7 +688,7 @@ def get_metadata(hr_collection: str, title: str, request: gr.Request):
 
     # return local_tags.split(","), embedding_used
     # tags = tags - {""}
-    return list(tags), embedding_used
+    return list(tags), gr.Textbox(value = embedding_used)
 
 
 
@@ -550,7 +721,8 @@ def _get_retriever(hr_collection: str, embed_model: str,
     if not hr_collection: hr_collection = "Generic"
     ascii_collection = _clean_collection(hr_collection)
     QEM = _get_query_embeddings(embed_model, search_query)
-    db = Chroma(persist_directory = str(chroma_database_dir), embedding_function = QEM, collection_name = ascii_collection)
+    # db = Chroma(persist_directory = str(chroma_database_dir), embedding_function = QEM, collection_name = ascii_collection)
+    db = Chroma(client=_get_client(), embedding_function = QEM, collection_name = ascii_collection)
 
     search_kwargs = {"k": k}
 
@@ -587,7 +759,8 @@ def _get_summary_retriever(hr_collection: str, embed_model: str,
     '''
     ascii_collection = _clean_collection(hr_collection)
 
-    db = Chroma(persist_directory=str(chroma_database_dir), embedding_function=_get_query_embeddings(embed_model), collection_name=ascii_collection)
+    # db = Chroma(persist_directory=str(chroma_database_dir), embedding_function=_get_query_embeddings(embed_model), collection_name=ascii_collection)
+    db = Chroma(client=_get_client(), embedding_function=_get_query_embeddings(embed_model), collection_name=ascii_collection)
 
     filters = [{"game_system": hr_collection}, {"chunk_type": "summary"}]
 
@@ -610,8 +783,8 @@ def _get_query_embeddings(embeddings: str, search_query: bool = False):
     This allows for the use of the search query prefix in nomic-embed-text. The others, mixed bread and snowflake artic, will come eventually.
     '''
     if search_query:
-        return OllamaEmbeddings(model = embeddings, model_kwargs = {"prompt": "search_query:"})
-    return OllamaEmbeddings(model = embeddings)
+        return OllamaEmbeddings(model = embeddings, model_kwargs = {"prompt": "search_query:"}, base_url=OLLAMA_HOST)
+    return OllamaEmbeddings(model = embeddings, base_url=OLLAMA_HOST)
 
 
 def _gradio_history_to_langchain(history: list):
@@ -685,7 +858,8 @@ def _hybrid_search(question: str, hr_collection: str, embed_model: str,
     bm25 = BM25Okapi(tokenized)
     bm25_scores = bm25.get_scores(question.lower().split())
 
-    db = Chroma(persist_directory=str(chroma_database_dir), embedding_function=_get_embeddings(embed_model), collection_name=ascii_collection)
+    # db = Chroma(persist_directory=str(chroma_database_dir), embedding_function=_get_embeddings(embed_model), collection_name=ascii_collection)
+    db = Chroma(client=_get_client(), embedding_function=_get_embeddings(embed_model), collection_name=ascii_collection)
     semantic_results = db.similarity_search_with_score(question, k = len(all_docs), filter = where_filter)
 
     semantic_score_map = {result.metadata.get("id", ""): score for result, score in semantic_results}
@@ -739,6 +913,63 @@ def _load_document(file_path, DocLoader):
     return document
 
 
+def _load_document_column_aware_alt(file_path: pathlib.Path) -> list:
+    '''
+    '''
+    import pdfplumber
+    documents = []
+    with pdfplumber.open(str(file_path)) as pdf:
+        for page in pdf.pages:
+            width, height = page.width, page.height
+
+            left_bbox = (0, 0, width / 2, height)
+            right_bbox = (width / 2, 0, width, height)
+
+            left_col = page.within_bbox(left_bbox).extract_text()
+            right_col = page.within_bbox(right_bbox).extract_text()
+
+            if left_col: documents.append(left_col)
+            if right_col: documents.append(right_col)
+
+    return documents
+
+
+def _load_document_column_aware(file_path: pathlib.Path) -> list:
+    '''
+    '''
+    import pdfplumber
+    documents = []
+
+    with pdfplumber.open(str(file_path)) as pdf:
+        for i, page in enumerate(pdf.pages):
+            words = page.extract_words()
+            if not words: continue
+
+            x_positions = [w['x0'] for w in words]
+            page_width = page.width
+            mid = page_width / 2
+
+            left_count = sum(1 for x in x_positions if x < mid * 0.85)
+            right_count = sum(1 for x in x_positions if x > mid * 1.15)
+            center_count = sum(1 for x in x_positions if mid * 0.85 <= x <= mid * 1.15)
+
+            is_two_column = (left_count > 20 and right_count > 20 and center_count < (left_count + right_count) * 1.15)
+
+            if is_two_column:
+                text: str = _extract_two_column_page(page)
+                extraction_method = "two_column"
+            else:
+                text: str = page.extract_text() or ""
+                extraction_method = "standard"
+            
+            if text.strip():
+                documents.append(Document(page_content=text, metadata = {"source": str(file_path), "page": i, "extraction_method": extraction_method}))
+
+            logger.info(f"Page {i}: {extraction_method} extraction | {len(text)} chars")
+
+    return documents
+
+
 def load_documents(file, hr_collection, embed_model, lang_model,
                    tags: list | None = None, chunk_size = 512, chunk_overlap = 50, chunk_batch = 50, chunk_sum = 10, 
                    save_chunks: bool = True, save_summary: bool = True,
@@ -767,9 +998,10 @@ def load_documents(file, hr_collection, embed_model, lang_model,
         ".docx": UnstructuredWordDocumentLoader, 
         ".epub": UnstructuredEPubLoader, 
         ".md": UnstructuredMarkdownLoader,
-        ".pdf": PDFPlumberLoader, 
+        ".pdf": PDFPlumberLoader, # this is kinda not used much anymore, because of the possibility of dual columns.
         ".txt": TextLoader, 
                   }
+    
     DocLoader = suffix_map.get(file.suffix)
 
     if DocLoader is None:
@@ -777,9 +1009,10 @@ def load_documents(file, hr_collection, embed_model, lang_model,
         return f"Error: Unsupported file type: {file.suffix}"
     
     logger.info(f"Document loader set to {DocLoader.__name__}")
-            
+
     try:
-       document = _load_document(file, DocLoader)
+       if file.suffix == ".pdf": document = _load_document_column_aware(file)
+       else: document = _load_document(file, DocLoader)
     except Exception as e:
         logger.error(f"Failed to load document | {file} | {type(e)} | {e}")
         return f"Error loading file: {type(e)}"
@@ -827,8 +1060,6 @@ def load_documents(file, hr_collection, embed_model, lang_model,
             return f" Error writing summary to database: {e}"
 
 
-
-
 def _load_to_Chroma(chunks, collection, embed_model, 
                     add_ids: bool = True, batch_size = 50, tags: list | None = None, title: str | None = None,
                     *args, **kwargs):
@@ -838,7 +1069,8 @@ def _load_to_Chroma(chunks, collection, embed_model,
     Part of RAG Input
     '''
     hr_collection = human_collection(collection)
-    db = Chroma(persist_directory = str(chroma_database_dir), embedding_function = _get_embeddings(embed_model), collection_name = collection)  # get embeddings here never uses the search doc prefix. Think about turning that on at some point.
+    # db = Chroma(persist_directory = str(chroma_database_dir), embedding_function = _get_embeddings(embed_model), collection_name = collection)  # get embeddings here never uses the search doc prefix. Think about turning that on at some point.
+    db = Chroma(client=_get_client(), embedding_function = _get_embeddings(embed_model), collection_name = collection)  # get embeddings here never uses the search doc prefix. Think about turning that on at some point.
 
     if add_ids: chunks = _metadata_IDs(chunks)
 
@@ -890,7 +1122,6 @@ def _looks_like_stat_block(text: str) -> bool:
     ]
     matches = sum(1 for p in patterns if re.search(p, text, re.IGNORECASE))
     return matches >= 2  # at least two stat indicators
-
 
 
 def _looks_like_table(text: str) -> bool:
@@ -1047,7 +1278,8 @@ def query_rag_routed(message: str, history: list, lang_model: str, embed_model: 
     available_tags = enrich_keywords  # because I'm lazy and don't want to change the variable right now.
     rule_systems = find_collections()
 
-    llm = ChatOllama(model = lang_model)
+    # llm = ChatOllama(model = lang_model)
+    llm = ChatOllama(model = lang_model, base_url = OLLAMA_HOST)
 
     classification, extracted_tags, extracted_rule_system  = _classify_and_tag(message, llm, rule_systems, available_tags)
 
@@ -1074,21 +1306,8 @@ def query_rag_routed(message: str, history: list, lang_model: str, embed_model: 
     
     # The forcing of the float here is to make sure that the number going in is a float.
     if len(collections_to_search) == 1:
-        # if _query_is_conceptual(message): 
-        #     logger.info(f"Conceptual Query")
-        #     retriever = _get_summary_retriever(collections_to_search[0], embed_model, k = k, tags = tags, score_threshold = float(score_threshold))
-        # else: 
-        #     logger.info(f"Not Conceptual Query")
-        #     retriever = _get_retriever(collections_to_search[0], embed_model, tags = tags, k = k, score_threshold = float(score_threshold))
         retriever = _get_hybrid_retriever(collections_to_search[0], embed_model, k = k, tags = tags)
     else:
-        # if _query_is_conceptual(message): 
-        #     logger.info(f"Conceptual Query")
-        #     retrievers = [_get_summary_retriever(c, embed_model, k = k, tags = tags, score_threshold = float(score_threshold)) for c in collections_to_search] 
-        # else: 
-        #     logger.info(f"Not Conceptual Query")
-        #     retrievers = [_get_retriever(c, embed_model, tags = tags, k = k, score_threshold = float(score_threshold)) for c in collections_to_search]
-        # retriever = _merge_retrievers(retrievers)
         def multi_retriever(query: str) -> list[Document]:
             '''
             Probably could be a stand alone function rather than an embedded one.
@@ -1116,7 +1335,8 @@ def _rag_response(message, history, lang_model, retriever):
 
     However query_rag is not going to be used in the future, so this is instead a nice way to apply logging logic and find errors.
     '''
-    llm = ChatOllama(model = lang_model)
+    # llm = ChatOllama(model = lang_model)
+    llm = ChatOllama(model = lang_model, base_url = OLLAMA_HOST)
 
     prompt = ChatPromptTemplate.from_messages([("system", """
                                                 Rulebook context has been retrieved and is provided below. Use it if it is relevant to the question. 
