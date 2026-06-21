@@ -107,3 +107,5 @@ Add multimodal re-extraction/add multimodal first extraction                    
 Implement celery library for concurrent uploads                                                   , docker, 6/20/26, Medium  , 
 Create Database tab for investigating Database chunks                                             , ui    , 6/20/26, Medium  , 
 Create Quarantine Database for low score pages                                                    , rag   , 6/20/26, Medium  , 
+Clean up IDs to be Rule_System:Book_Title:Page_ID:Page_Chunk_ID:All_Chunk_ID                      , rag   , 6/21/26, High    ,
+Clean up and simplify upload and re-summarize commands to use each other                          , rag   , 6/21/26, Low     ,

@@ -46,6 +46,9 @@ except Exception as e:
         EMBED_MODELS = ["Dummy Embed 1", "Dummy Embed 2", "Dummy Embed 3"]
     else:
         raise e
+else:
+    if len(LANG_MODELS) < 1: LANG_MODELS = ["Dummy Language 1", "Dummy Language 2", "Dummy Language 3"]
+    if len(EMBED_MODELS) < 1: EMBED_MODELS = ["Dummy Embed 1", "Dummy Embed 2", "Dummy Embed 3"]
 
 # <-- Global States -->
 

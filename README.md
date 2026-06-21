@@ -10,7 +10,11 @@ Due to copyright laws, the database is not hosted here, and instead the user mus
 
 ## 3.1) Docker
 
-This is meant to be installed via Docker Images. A docker-compose.yml file is included that reads from the pypyroject.toml file, meaning that everything can be self contained with no need to manually install the python dependencies.
+This is meant to be installed via Docker Images. A docker-compose.yml file is included that reads from the pypyroject.toml file, meaning that everything can be self contained with no need to manually install the python dependencies. Simply run
+
+*docker compose up -d*
+
+and everything will be installed.
 
 Ollama still needs to be configured for use with Technomancer: this is BYOLLM. You will need to pull your own Ollama models. Because Technomancer will check for Ollama models at startup, the first time you run it you probably will not have any models available. To pull models you can use the CLI command
 
@@ -18,9 +22,9 @@ docker exec <ollama container name linked to technomancer> ollama pull <model>
 
 For example 
 
-docker exec technomancer-ollama-1 ollama pull nomic-embed-text
+*docker exec technomancer-ollama-1 ollama pull nomic-embed-text*
 
-pulls the nomic-embed-text embedding model from Ollama. You may need to replace technomancer-ollama-1 with what you call it on your machine. Additionally, technomancer tries to find the available models by using requests.get(f'http://ollama:{ollama_port}/api/tags'), where ollama_port is the port that is setup for ollama in docker. It *expects* this port to be 11434, and gets this information from the Settings.toml file. If you adjusted it to another port, be sure to change this value in the Settings.toml file as well.
+pulls the nomic-embed-text embedding model from Ollama. You may need to replace technomancer-ollama-1 with what you call it on your machine. Additionally, technomancer tries to find the available models by using requests.get(f'http://ollama:{ollama_port}/api/tags'), where ollama_port is the port that is setup for ollama in docker. It *expects* this port to be 11434, and gets this information from the Settings.toml file. If you adjusted it to another port, be sure to change this value in the Settings.toml file as well. Similarly Chroma DB is set to port 8000, and will need to be adjusted in the Settings.toml file.
 <!-- docker compose up -d -->
 
 ## 3.2) Manual

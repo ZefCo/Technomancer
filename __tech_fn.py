@@ -466,7 +466,7 @@ def update_drop_down(choices: list, request: gr.Request,
         return gr.Dropdown(choices = choices, value = choice)
     elif choices:
         # logger.info(f"Updating drop down | {choices}") 
-        return gr.Dropdown(choices = choices, value = None)
+        return gr.Dropdown(choices = choices)
     else:
         # logger.info(f"Updating drop down | []") 
         return gr.Dropdown(choices = [])

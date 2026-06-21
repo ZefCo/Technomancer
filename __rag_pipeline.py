@@ -154,6 +154,8 @@ def _create_chunks(document, chunk_size, chunk_overlap, *args, **kwargs):
         return None
     else:
         logger.info(f"{len(chunks)} were created from document")
+
+    # logger.critical(f"{type(chunks)}\n{chunks}")
     
     return chunks
 
@@ -285,6 +287,71 @@ def _enrich_chunk_metadata(chunks, game_system: str, embed_model: str):
     return chunks
 
 
+
+def find_chunk(hr_collection: str, ids: str, request: gr.Request):
+    '''
+    Gets all the data from the specified chunk
+    '''
+    # set_current_user(request.username)
+    ascii_collection = _clean_collection(hr_collection)
+    client = _get_client()
+    local_collection = client.get_collection(str(ascii_collection))
+
+    local_chunk = local_collection.get(ids = [ids])
+
+    # logger.critical(f"Local Chunk | {local_chunk} | {type(local_chunk)}")
+
+    # I'm keeping this here as the project expands: things will be added or removed depending on the needs of the project
+    # the local chunk is a dictionary with (* means things that will be used):
+    # *ids -> the ids of the chunk
+    # embeddings -> ?
+    # metadatas -> a list with
+        # source -> where it came from. Can be changed to Rule_System:Book_Title
+        # auto_tags -> list
+        # *page -> #
+        # id -> str
+        # *chunk_type -> string
+        # Trapped -> bool
+        # ModData -> datetime
+        # *game_system -> string
+        # Creator -> string
+        # *total_pages -> #
+        # *tags -> list
+        # file_path -> str
+        # *Title -> str
+        # Producer -> str
+        # *embedding_used -> str
+        # source_pages -> str | int -> make sure it's a string
+    # *documents -> list -> maybe only need the first index?
+    # data -> ?
+    # uris -> ?
+    # what was included to find it
+
+    metadata_tags: list = local_chunk["metadatas"][0]["tags"]
+    document_data: str = local_chunk["documents"][0]
+    page_source: str = str(local_chunk["metadatas"][0].get("source_pages", "?"))
+    chunk_type: str = local_chunk["metadatas"][0].get("chunk_type", "?")
+    quality_score: str = local_chunk["metadatas"][0].get("QS", "?")
+
+    return gr.TextArea(value = document_data), gr.Dropdown(value=metadata_tags), gr.Textbox(value = page_source), gr.Textbox(value = chunk_type), gr.Textbox(value = quality_score)
+
+
+
+def find_chunks(hr_collection: str, title: str, just_ids = True):
+    '''
+    Gets all the chunk ids for a given document.
+    '''
+    ascii_collection = _clean_collection(hr_collection)
+    client = _get_client()
+    local_collection = client.get_collection(str(ascii_collection))
+
+    local_chunks = local_collection.get(where = {"Title": title})
+
+    # logger.critical(f"")
+    if just_ids: return local_chunks["ids"], gr.Textbox(value = len(local_chunks["ids"]))
+    else: return local_chunks
+
+
 def find_collections():
     '''
     Returns all collections in the database.
@@ -311,9 +378,10 @@ def find_document(document: str, hr_collection: str, request: gr.Request):
     from random import randint
     set_current_user(request.username)
 
-    ascii_collection = _clean_collection(hr_collection)
-    client = _get_client()
-    local_collection = client.get_collection(str(ascii_collection))
+    # ascii_collection = _clean_collection(hr_collection)
+    # client = _get_client()
+    # local_collection = client.get_collection(str(ascii_collection))
+    local_collection = _get_local_collection(hr_collection)
     local_chunks = local_collection.get(where = {"Title": document})
 
     random_chunk = randint(0, len(local_chunks["ids"]) - 1)
@@ -432,9 +500,38 @@ def _extract_two_column_page(page,
 
 
 
-def generate_summary(chunks):
+def generate_summary(hr_collection: str, title: str, embed_model: str, lang_model: str, section_size: int, 
+                     batch_size = 50):
     '''
+    Can be used to regenerate the summary from the chunks. Needs to filter out anything that is not a summary.
+
+    I need to think about this because if I don't save the chunks, and just generate the summary, how do I get the chunks?
     '''
+    ascii_collection = _clean_collection(hr_collection)
+    local_collection = _get_local_collection(hr_collection)
+
+    try:
+        local_collection.delete(where = {"Title": title, "chunk_type": "summary"})
+    except ValueError as e:
+        pass   # can be caused by there being nothing in there, which is OK.
+    except Exception as e:
+        logger.critical(f"Error deleting summary for {title} | {hr_collection} | {type(e)} | {e}")
+    
+    chunks = local_collection.get(where = {"Title": title})
+    chunks = [Document(page_content = doc, metadata = meta if meta else {}, id = doc_id) for doc, meta, doc_id in zip(chunks.get("documents", []), chunks.get("metadatas", []), chunks.get("ids", []))]
+
+    # This was saved and processed as a list of Documents
+    
+    # logger.critical(f"{type(chunks)} | {list(chunks.keys())}")
+
+    summary = _generate_section_summary(chunks, lang_model, section_size, hr_collection)
+
+    try:
+        _load_to_Chroma(summary, ascii_collection, embed_model, add_ids = False, title = title, batch_size = batch_size)
+        logger.info(f"Successfully loaded {file.name} summary | {hr_collection}")
+    except Exception as e:
+        logger.error(f"Failed to load summary to Chroma | {type(e)} | {e}")
+        return f" Error writing summary to database: {e}"
 
 
 
@@ -511,6 +608,16 @@ def _get_client():
     return _chroma_client
 
 
+def _get_local_collection(hr_collection):
+    '''
+    '''
+    ascii_collection = _clean_collection(hr_collection)
+    client = _get_client()
+    local_collection = client.get_collection(str(ascii_collection))
+
+    return local_collection
+
+
 @lru_cache(maxsize=4)
 def _get_embeddings(embed_model, search_doc = False):
     '''
@@ -558,7 +665,7 @@ def get_metadata(hr_collection: str, title: str, request: gr.Request):
 
     results = collection.get(where = {"Title": title})
     # print(results["metadatas"][0])
-    embedding_used = results["metadatas"][0]["embedding_used"]
+    embedding_used: str = results["metadatas"][0]["embedding_used"] or ""
     tags = set()
 
     for result_tags in results["metadatas"]:
@@ -581,7 +688,7 @@ def get_metadata(hr_collection: str, title: str, request: gr.Request):
 
     # return local_tags.split(","), embedding_used
     # tags = tags - {""}
-    return list(tags), embedding_used
+    return list(tags), gr.Textbox(value = embedding_used)
 
 
 
@@ -806,6 +913,27 @@ def _load_document(file_path, DocLoader):
     return document
 
 
+def _load_document_column_aware_alt(file_path: pathlib.Path) -> list:
+    '''
+    '''
+    import pdfplumber
+    documents = []
+    with pdfplumber.open(str(file_path)) as pdf:
+        for page in pdf.pages:
+            width, height = page.width, page.height
+
+            left_bbox = (0, 0, width / 2, height)
+            right_bbox = (width / 2, 0, width, height)
+
+            left_col = page.within_bbox(left_bbox).extract_text()
+            right_col = page.within_bbox(right_bbox).extract_text()
+
+            if left_col: documents.append(left_col)
+            if right_col: documents.append(right_col)
+
+    return documents
+
+
 def _load_document_column_aware(file_path: pathlib.Path) -> list:
     '''
     '''
@@ -831,7 +959,7 @@ def _load_document_column_aware(file_path: pathlib.Path) -> list:
                 text: str = _extract_two_column_page(page)
                 extraction_method = "two_column"
             else:
-                text: str = page.extract_table() or ""
+                text: str = page.extract_text() or ""
                 extraction_method = "standard"
             
             if text.strip():
@@ -1178,21 +1306,8 @@ def query_rag_routed(message: str, history: list, lang_model: str, embed_model: 
     
     # The forcing of the float here is to make sure that the number going in is a float.
     if len(collections_to_search) == 1:
-        # if _query_is_conceptual(message): 
-        #     logger.info(f"Conceptual Query")
-        #     retriever = _get_summary_retriever(collections_to_search[0], embed_model, k = k, tags = tags, score_threshold = float(score_threshold))
-        # else: 
-        #     logger.info(f"Not Conceptual Query")
-        #     retriever = _get_retriever(collections_to_search[0], embed_model, tags = tags, k = k, score_threshold = float(score_threshold))
         retriever = _get_hybrid_retriever(collections_to_search[0], embed_model, k = k, tags = tags)
     else:
-        # if _query_is_conceptual(message): 
-        #     logger.info(f"Conceptual Query")
-        #     retrievers = [_get_summary_retriever(c, embed_model, k = k, tags = tags, score_threshold = float(score_threshold)) for c in collections_to_search] 
-        # else: 
-        #     logger.info(f"Not Conceptual Query")
-        #     retrievers = [_get_retriever(c, embed_model, tags = tags, k = k, score_threshold = float(score_threshold)) for c in collections_to_search]
-        # retriever = _merge_retrievers(retrievers)
         def multi_retriever(query: str) -> list[Document]:
             '''
             Probably could be a stand alone function rather than an embedded one.
