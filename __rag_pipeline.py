@@ -241,10 +241,14 @@ def _direct_response(message: str, history: list, lang_model: str):
     completion = ollama.chat(model = lang_model, messages = messages, stream = True)
     response = ""
 
-    for chunk in completion:
-        if "message" in chunk and "content" in chunk["message"]:
-            response += chunk["message"]["content"]
-            yield response
+    try:
+        for chunk in completion:
+            if "message" in chunk and "content" in chunk["message"]:
+                response += chunk["message"]["content"]
+                yield response
+    except Exception as e:
+        logger.critical(f"Unable to generate response | Type: {type(e)} | {e}")
+        raise ZeroDivisionError
 
 
 def _enrich_chunk_metadata(chunks, game_system: str, embed_model: str):
@@ -456,13 +460,18 @@ def _generate_section_summary(chunks: list, lang_model: str, section_size: int =
             combined_text = f"{combined_text}\n\n{c.page_content}"
             combined_tags = combined_tags | set(c.metadata["tags"]) #  combined_tags | set(c.metadata["tags"].split(","))
 
-        response = ollama.chat(model = lang_model,
-                               messages = [{"role": "user",
-                                            "content": f"""Summarize the following rulebook sections in 2-5 paragraphs. Generate tables or lists if necessary.
-                                            Focus on: what rules or mechanics are covered, what a player needs to know, any key terms that should be defined. Be concise but complete.
+        try:
+            response = ollama.chat(model = lang_model,
+                                    messages = [{"role": "user",
+                                                "content": f"""Summarize the following rulebook sections in 2-5 paragraphs. Generate tables or lists if necessary.
+                                                Focus on: what rules or mechanics are covered, what a player needs to know, any key terms that should be defined. Be concise but complete.
 
-                                            Text:
-                                            {combined_text}"""}])
+                                                Text:
+                                                {combined_text}"""}])
+        except Exception as e:
+            logger.critical(f"Unable to generate summary | Type: {type(e)} | {e}")
+            raise ZeroDivisionError
+        
         summary_text = response["message"]["content"]
 
         first_chunk = section[0]
