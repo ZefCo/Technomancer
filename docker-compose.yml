@@ -1,0 +1,46 @@
+# docker-compose.yml
+# To compile the docker setup, use docker compose up -d
+services:
+  ollama:
+    image: ollama/ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all        # Use '1' if you want to limit to a single GPU
+              capabilities: [gpu]
+
+# Will eventually make a second database, Quarantine, at a different port
+  chromadb:
+    image: chromadb/chroma:latest
+    volumes:
+      - chroma_data:/data
+    ports:
+      - "8000:8000"
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/data
+
+  technomancer:
+    build: .
+    ports:
+      - "7860:7860"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+    depends_on:
+      - ollama
+      - chromadb
+    volumes:
+      - technomancer_logs:/app/Logs
+
+volumes:
+  ollama_data:
+  chroma_data:
+  technomancer_logs:

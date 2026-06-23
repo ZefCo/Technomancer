@@ -1,12 +1,33 @@
-1) OVERVIEW
+# 1) OVERVIEW
 
-This is a locally hosted document retrieval and chat application, built with Ollama (for chat applications), LangChain (for RAG), ChromaDB (for vector embedding), and Gradio (for the web UI). Being that it is locally hosted, it can accessed on any device on the local network, and not meant to have any data leak out onto the web. It supports PDF ingestion, and the chunk size and overlap of the PDF can be adjusted on a per ingestion basis. Primarily it was designed as an assistant tool for referencing tables and rules in Role Playing Games, as they have a variety of tables and rules scattered throughout a large book with different fonts, making both in person referencing and the use of RAG a bit of an art form. This is also meant to be a "proof of concept" for larger and more technically challenging RAG pipelines that could be used, for example, in network maintenance, where the whole application is able to retrieve information on the network, process it, and respond with the state of different parts of the network. The overall application is meant as a tool for the user to make their work easier. Note that because this is a local LLM, it can be slow. Often the local LLM is going to take a few minutes to get started when it is first interacted with, and depending on the model you choose and your system abilities, it can taken even longer.
+This is a locally hosted document retrieval and chat application, built with Ollama (for chat applications), LangChain (for RAG), ChromaDB (for vector embedding), Gradio (for the web UI), all meant to be linked together in Docker. Being that it is locally hosted, it can accessed on any device on the local network and not meant to be hosted on the web. It supports PDF ingestion, and the chunk size and overlap of the PDF can be adjusted on a per ingestion basis. Primarily it was designed as an assistant tool for referencing tables and rules in Role Playing Games, as they have a variety of tables and rules scattered throughout a large book with different fonts, making both in person referencing and the use of RAG a bit of an art form. This is also meant to be a "proof of concept" for larger and more technically challenging RAG pipelines that could be used, for example, in network maintenance, where the whole application is able to retrieve information on the network, process it, and respond with the state of different parts of the network. The overall application is meant as a tool for the user to make their work easier. Note that because this is a local LLM, it can be slow. Often the local LLM is going to take a few minutes to get started when it is first interacted with, and depending on the model you choose and your system abilities, it can taken even longer. The need for Docker is to allow multiple users to concurrently be able to ingest and interact with the database at once. A simple login is applied, again meant for use on a local network with only a few users and not a larger network that would require real security.
 
-2) DISCLAIMER
+# 2) DISCLAIMER
 
 Due to copyright laws, the database is not hosted here, and instead the user must build their own *with the books and documents that they have legally purchased.* Instructions are provided about how to do that, but again, they must bring their own legally purchased documents. RPG designers deserve to be in business, support them.
 
-3) INSTALLATION & REQUIREMENTS
+# 3) INSTALLATION & REQUIREMENTS
+
+## 3.1) Docker
+
+This is meant to be installed via Docker Images. A docker-compose.yml file is included that reads from the pypyroject.toml file, meaning that everything can be self contained with no need to manually install the python dependencies. Simply run
+
+*docker compose up -d*
+
+and everything will be installed.
+
+Ollama still needs to be configured for use with Technomancer: this is BYOLLM. You will need to pull your own Ollama models. Because Technomancer will check for Ollama models at startup, the first time you run it you probably will not have any models available. To pull models you can use the CLI command
+
+docker exec <ollama container name linked to technomancer> ollama pull <model>
+
+For example 
+
+*docker exec technomancer-ollama-1 ollama pull nomic-embed-text*
+
+pulls the nomic-embed-text embedding model from Ollama. You may need to replace technomancer-ollama-1 with what you call it on your machine. Additionally, technomancer tries to find the available models by using requests.get(f'http://ollama:{ollama_port}/api/tags'), where ollama_port is the port that is setup for ollama in docker. It *expects* this port to be 11434, and gets this information from the Settings.toml file. If you adjusted it to another port, be sure to change this value in the Settings.toml file as well. Similarly Chroma DB is set to port 8000, and will need to be adjusted in the Settings.toml file.
+<!-- docker compose up -d -->
+
+## 3.2) Manual
 
 A list of requirements are in the requirements.txt file.
 
@@ -20,9 +41,9 @@ ChromaDB:
     
 FastAPI (not implemented yet)
 
-4) USE
+# 4) USE
 
-4.1) MODELS
+## 4.1) MODELS
 
 You can install any Ollama model you want, but you must install a language model and an embedding model. Multiple models can be installed, and you can switch between them. If you are familiar with how to make new models, you can also design your own. A model file title Modelfile_Technomancer is provided for creating a Technomancer personality for the chatbot, otherwise it will use whatever language model provided. No system content prompt is used, which allows for more flexibility with language model personalities. For embedding models, size does have an effect on preformance. Qwen 8b provides more nuance to retrival, but is slower, while Qwen 4b provides less nuance (and may come back with false positives) but is much faster. Overall, play with several different models until you find something you feel works well. The choice of language model matters greatly in the quality of responses you will recieve. Llama3.1:8b, for example, gives very matter of fact responses and tries to stick to the documents provided, while some others stray and begin to make up responses.
 
@@ -31,13 +52,13 @@ Note: there is a settings folder title EmbeddingModels.yaml that allows for the 
 (The following is not yet implemented)
 For advanced users, it is possible to user different databases and to switch embedding models for those different databases. However, only one embedding model maybe be used for a database (a database cannot suppoed multiple embedding models). When in doubt however, pick a single embedding model for all databases. 
 
-4.2) WEB UI
+## 4.2) WEB UI
 
 To interact, make sure that the requirements are installed and satisfied (easily done in Anaconda), activate the python environment where those requirements are installed, and run start_up.py. This starts up the server on the local device at URL "0.0.0.0:7860". To get to the web interface, go to any web browser and use the IP of the host device at port 7860. For example, if the host device is at 123.456.7.890, the IP address for the web UI is 123.456.7.890:7860. If connecting *on* the host device, you can additionally use the local host ip with the port number, which is typically something like 127.0.0.1:7860. Currently there is no login, you are brought straight to the splash page. 
 
 Right now the chat is not persistent, and will be refreshed once the page is refreshed. The ability to save chat is forthcoming. Also that a system prompt can be adjusted in the Advanced Features section of the chatbot page, however doing so *mid conversation* can cause issues with the chatbot. It can become confused/hallucinate because it was in the middle of one conversation and now told to do something different, but is still able to see previous portions of the chat. While this can be a useful feature, it is advised to use it sparingly. Currently the only model supported is phi4, so check system requirements on that before downloading. Eventually other chatbots will be available for selection.
 
-4.3) DOCUMENT UPLOAD & RETRIEVAL
+## 4.3) DOCUMENT UPLOAD & RETRIEVAL
 
 This is mostly designed as a document retrieval program to quickly reference and pull existing rules, notes, tables, etc. from a database. This is not meant as generative AI: I am not trying to replace imagination here, just make getting rules easier.
 
@@ -59,7 +80,7 @@ A good rule of thumb for the chunk size and overlap:
 
 For the chunk overlap, 10-20% of the chunk size is great.
 
-5) NOTE ON COLLECTIONS
+# 5) NOTE ON COLLECTIONS
 
 Normally there are rules about how the named collections can be formated. To deal with this, all named collections are turned into an ascii string, which should preserve the original rule book system name. For this reason, the collection name for rule books should be limited to a maximum length of 120 characters. Normally it is allowed to be 3 to 512 characters for a ChromaDB collection, however, since they are being turned into an ascii representation of 2-3 numbers which are then spaced by an underscore, this really limits it to 512/4 = 128. In practice it should be limited to 120, just in case an ascii representation is greater than 4.
 
