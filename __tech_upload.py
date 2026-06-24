@@ -48,6 +48,8 @@ def create_upload():
                 # with gr.Row():
                 gr.Markdown("## Rule System & Tags")
                 gr.Markdown("All documents need to be added to a rule system, a group that the document can belong to. To create a rule system group, select from or type into the dropdown menu. Tags can be added to any document, which will make searching those documents with Technomancer easier. The Save Tags button exports the tags to an external file, which loads them later. To delete tags, they are saved in the Settings folder in the Tags.yaml file: simple remove the lines of tags you don't want nor need. Alternativly, add to that file as you wish.")
+                refresh_rules_btn_1 = gr.Button(value = "Refresh Rules List")
+
                 with gr.Column(variant = "panel"):
                     with gr.Row():
                         rule_systems_dd = gr.Dropdown(label = "Rule System to Upload to (Required)", choices = [], interactive = True, allow_custom_value = True, scale = 3)
@@ -56,11 +58,10 @@ def create_upload():
                     # new_rule_system = gr.Textbox(label = None, submit_btn = True, placeholder = "Type in a new rule system/collection")
                 
                 with gr.Row():
-                    metadata_tags_dd = gr.Dropdown(choices = [], label = "Tags to organize documents", multiselect = True, allow_custom_value = True, scale = 5, interactive = True)
+                    metadata_tags_dd = gr.Dropdown(choices = [], label = "Tags: added to *all* chunks of the document", multiselect = True, allow_custom_value = True, scale = 5, interactive = True)
                     save_tags = gr.Button(value = "Save Tags", scale = 1)
 
                 chunking_type_check = gr.CheckboxGroup(label = "Save Chunks/Summary/Both", choices = ["Chunk", "Summary", "Both"], value = "Both", interactive = True, info = "Will save both Chunks and Summary")
-                refresh_rules_btn_1 = gr.Button(value = "Refresh Rules List")
 
             with gr.Column(variant = "panel"):
                 gr.Markdown("## Chunks")
