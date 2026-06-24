@@ -17,6 +17,16 @@ metadata = ["Combat Rules", "Equipment", "Fantasy", "Generic", "Homebrew", "Lore
 [embedd_models]
 models = ["nomic-embed-text-v2-moe", "qwen3-embedding", "embeddinggemma", "nomic-embed-text", "mxbai-embed-large", "bge-m3", "snowflake-arctic-embed", "all-minilm", "paraphrase-multilingual", "snowflake-arctic-embed2", "granite-embedding", "bge-large"]
 
+[multimodal]
+models = ["minicpm-v", "minimax-m3", "kimi-k2.7-code", "minicpm-v4.6", "minicpm-v4.5", "gemma4", "qwen3.5", "qwen3.6", "glm-ocr", "nemotron3", "translategemma", "kimi-k2.6", "kimi-k2.5", "mistral-medium-3.5", "medgemma", "medgemma1.5", "qwen3-vl", "gemini-3-flash-preview", "ministral-3", "devstral-small-2", "deepseek-ocr", "mistral-large-3", "gemma3", "llava", "llama3.2-vision", "mistral-small3.2", "qwen2.5vl", "llama4", "llava-llama3", "granite3.2-vision", "mistral-small3.1", "moondream", "bakllava", "llava-phi3"]
+
 [ports]
 chroma = 8000
-ollama = 11434
+ollama = 11435  # 11434
+
+# Note these are not meant to be end-all-be-all values. The chunks get put in Quarantine DB and can be moved back into the regular DB
+[QUALITY_THRESHOLDS]
+angled_ratio = 0.3          # >30% angled characters means it might be impossible to ingest with pdfplumber
+min_text_length = 50        # < 80 characters after cleaning, then this might be too spares
+max_doubled_ratio = 0.15    # if >15% double characters, then it might have a font issue
+min_word_count = 15         # minimum number of words that the chunk needs

@@ -24,19 +24,20 @@ import gradio as gr
 # from __rag_pipeline import find_collections, find_documents
 try:
     from __states import (avatars_state, 
-                        chunk_batches_state, chunk_overlap_state, chunk_size_state, chunk_summary_state,
-                        default_message_state, documents_list_state,
-                        embed_model_state, embed_models_list_state, empty_list_state, 
-                        false_state, 
-                        k_state,
-                        lang_model_state, lang_models_list_state,
-                        name_chunksize_state, name_embed_state, name_k_state, name_lang_state, name_rule_state, named_chunkoverlap_state, name_tags_state, name_threshold_state, name_chunkbatch_state, name_chunksum_state,
-                        percent_state, prefix_state,
-                        rule_system_state, rule_systems_list_state, 
-                        save_chunk_state, save_sum_state,
-                        tags_list_state, true_state, threshold_state,
-                        upload_status_state,
-                        ALL_USERS)
+                          chunk_batches_state, chunk_overlap_state, chunk_size_state, chunk_summary_state,
+                          default_message_state, documents_list_state,
+                          embed_model_state, embed_models_list_state, empty_list_state, 
+                          false_state, 
+                          k_state,
+                          lang_model_state, lang_models_list_state,
+                          name_chunksize_state, name_embed_state, name_k_state, name_lang_state, name_rule_state, named_chunkoverlap_state, name_tags_state, name_threshold_state, name_chunkbatch_state, name_chunksum_state,
+                          percent_state, prefix_state,
+                          rule_system_state, rule_systems_list_state, 
+                          save_chunk_state, save_sum_state,
+                          tags_list_state, true_state, threshold_state,
+                          upload_status_state,
+                          vision_models_list_state, vision_model_state,
+                          ALL_USERS)
 except Exception as e:
     print(f"{e} | unable to start - shutting down")
     import sys
@@ -53,7 +54,7 @@ from __tech_logs import create_log
 
 def launch_technomancer():
 
-    with gr.Blocks(title = "Technomancer v1.1pre") as Technomancer:
+    with gr.Blocks(title = "Technomancer v1.5pre") as Technomancer:
         # This is meant to better share states
         # because of how many state variables I'm juggeling, I'm going to keep them alphabitized.
         avatars_state.render()
@@ -69,11 +70,14 @@ def launch_technomancer():
         save_chunk_state.render(), save_sum_state.render()
         threshold_state.render()
         upload_status_state.render()
+        vision_models_list_state.render(), vision_model_state.render()
         true_state.render(), false_state.render()
 
         def user_name(boolean, request: gr.Request):
             '''
             The boolean isn't used, it's just a safety on how the request parameter is input.
+
+            I tried this once with only the request parameter and it got angry at me.
             '''
             username = request.username if request and hasattr(request, "username") else "anonymous"
             set_current_user(username)
@@ -120,11 +124,70 @@ def launch_technomancer():
             with gr.Tab(label = "Logs") as log_tab:
                 TECH_LOG, log_components = create_log()
 
-        chat_tab.select(fn = update_drop_down, inputs = [embed_models_list_state, embed_model_state], outputs = [chat_components["embed_models_dd"]]).then(fn = update_drop_down, inputs = [lang_models_list_state, lang_model_state], outputs = [chat_components["lang_models_dd"]]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [chat_components["rule_systems_dd"]]).then(fn = update_textbox, inputs = [lang_model_state], outputs = [chat_components["lang_textbox"]]).then(fn = update_drop_down, inputs = [tags_list_state], outputs = [chat_components["metadata_tags_dd"]]).then(fn = update_slider, inputs = [threshold_state], outputs = [chat_components["threshold"]]).then(fn = update_number, inputs = [k_state], outputs = [chat_components["k"]]) #.then(fn = update_textbox, inputs = [embed_model_state], outputs = [chat_components["embed_textbox"]])
-        upload_tab.select(fn = update_drop_down, inputs = [embed_models_list_state, embed_model_state], outputs = [upload_components["embed_models_dd"]]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [upload_components["rule_systems_dd_2"]]).then(fn = update_drop_down, inputs = [tags_list_state], outputs = [upload_components["metadata_tags_dd"]]).then(fn = update_drop_down, inputs = [lang_models_list_state], outputs = upload_components["lang_model_sum_dd"]).then(fn = update_slider, inputs = [chunk_batches_state], outputs = [upload_components["chunk_batch"]]).then(fn = update_slider, inputs = [chunk_overlap_state], outputs = [upload_components["chunk_overlap"]]).then(fn = update_slider, inputs = [chunk_size_state], outputs = [upload_components["chunk_size"]]).then(fn = update_slider, inputs = [chunk_summary_state], outputs = [upload_components["chunk_sum"]])  #.then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [upload_components["rule_systems_dd_1"]]) # .then(fn = update_textbox, inputs = [embed_model_state], outputs = [upload_components["embed_textbox"]])
-        db_tab.select(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [db_components["rule_systems_dd"]]).then(fn = update_drop_down, inputs = [lang_models_list_state], outputs = [db_components["lang_model_sum_dd"]])
-        log_tab.select()
+        chat_tab.select(
+                   fn = update_drop_down, 
+                   inputs = [embed_models_list_state, embed_model_state], 
+                   outputs = [chat_components["embed_models_dd"]]
+            ).then(fn = update_number, 
+                   inputs = [k_state], 
+                   outputs = [chat_components["k"]]
+            ).then(fn = update_drop_down, 
+                   inputs = [lang_models_list_state, lang_model_state], 
+                   outputs = [chat_components["lang_models_dd"]]
+            ).then(fn = update_drop_down, 
+                   inputs = [rule_systems_list_state], 
+                   outputs = [chat_components["rule_systems_dd"]]
+            ).then(fn = update_drop_down, 
+                   inputs = [tags_list_state], 
+                   outputs = [chat_components["metadata_tags_dd"]]
+            ).then(fn = update_slider, 
+                   inputs = [threshold_state], 
+                   outputs = [chat_components["threshold"]]
+            )
+        
+        upload_tab.select(
+                   fn = update_slider, 
+                   inputs = [chunk_batches_state], 
+                   outputs = [upload_components["chunk_batch"]]
+            ).then(fn = update_slider, 
+                   inputs = [chunk_overlap_state], 
+                   outputs = [upload_components["chunk_overlap"]]
+            ).then(fn = update_slider, 
+                   inputs = [chunk_size_state], 
+                   outputs = [upload_components["chunk_size"]]
+            ).then(fn = update_slider, 
+                   inputs = [chunk_summary_state], 
+                   outputs = [upload_components["chunk_sum"]]
+            ).then(fn = update_drop_down, 
+                   inputs = [embed_models_list_state, embed_model_state], 
+                   outputs = [upload_components["embed_models_dd"]]
+            ).then(fn = update_drop_down, 
+                   inputs = [lang_models_list_state, lang_model_state], 
+                   outputs = upload_components["lang_model_sum_dd"]
+            ).then(fn = update_drop_down, 
+                   inputs = [tags_list_state], 
+                   outputs = [upload_components["metadata_tags_dd"]]
+            ).then(fn = update_drop_down, 
+                   inputs = [rule_systems_list_state], 
+                   outputs = [upload_components["rule_systems_dd_2"]]
+            ).then(fn = update_drop_down,
+                   inputs = [vision_models_list_state, vision_model_state],
+                   outputs = [upload_components["vis_model_dd"]]
+            )
+        
+        db_tab.select(
+                   fn = update_drop_down, 
+                   inputs = [rule_systems_list_state], 
+                   outputs = [db_components["rule_systems_dd"]]
+            ).then(fn = update_drop_down, 
+                   inputs = [lang_models_list_state], 
+                   outputs = [db_components["lang_model_sum_dd"]]
+            ).then(fn = update_drop_down,
+                   inputs = [vision_models_list_state, vision_model_state],
+                   outputs = [db_components["vis_model_dd"]]
+            )
 
+        log_tab.select()
 
     return Technomancer
 

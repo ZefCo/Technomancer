@@ -209,25 +209,26 @@ def find_models(ollama_port):
     try:
         response = requests.get(f'http://ollama:{ollama_port}/api/tags')
     except CE as e:
+        logger.critical(f"Failure to get ollama host, switching to localhost")
 
         try:
             response = requests.get(f"http://localhost:{ollama_port}/api/tags")
         except CE as e:
             logger.critical(f"Ollama is not running | Failed both docker and localhost connection request")
-            raise FileNotFoundError
+            raise 
         except Exception as e:
             logger.critical(f"Error when trying to connect to Ollama localhost | {type(e)} | {e}")
-            raise FileNotFoundError
+            raise 
 
     except Exception as e:
         logger.critical(f"Ollama client response failed | {type(e)} | {e}")
-        raise FileNotFoundError
+        raise 
     
     try:
         model_list = response.json().get('models', [])
     except Exception as e:
         logger.critical(f"Ollama model list failed | {type(e)} | {e} | {type(response)} | {response}")
-        raise type(e)
+        raise
     
     return model_list
 
@@ -363,7 +364,7 @@ def list_length(lst):
 #     return tags["tags"]
 
 
-def sort_models(embedding_models, ollama_port):
+def sort_models(embedding_models, vision_models, ollama_port):
     '''
     Sorts them between embedding and language models. There is a (non comprehensive) list of embedding models, and if one of them is found it is tagged as an
     embedding mode. Again, this is non comprehensive, so that list may need to be adjusted on a per user basis.
@@ -376,6 +377,7 @@ def sort_models(embedding_models, ollama_port):
     
     language: list = []
     embedding: list = []
+    vision: list = []
     try:
         models: list[dict] = find_models(ollama_port)
     except FileNotFoundError as e:
@@ -383,35 +385,44 @@ def sort_models(embedding_models, ollama_port):
         raise FileNotFoundError
     except Exception as e:
         logger.critical(f"New error | {type(e)} | {e}")
-        print(e)
-        raise type(e)
+        raise
     
     # logger.warning(f"Models pulled | {models}")
 
     for model in models:
-        for em in embedding_models:
-            if re.search(em, model["name"]): 
-                embedding.append(model["name"])
-                break
+        if any(em in model["name"] for em in embedding_models): embedding.append(model["name"])
         else: language.append(model["name"])
 
-    logger.info(f"{language} | {embedding}")
+        if any(vi in model["name"] for vi in vision_models): vision.append(model["name"])  # it can be a vision AND a language model... I think
 
-    # if len(language) < 1: 
-    if language is None:
+        # for em in embedding_models:  # why not do a if model["name"] in tuple(embedding_models)? Because the names in Ollama have extra things, like the version or :latest, and that causes the search to fail.
+        #     if re.search(em, model["name"]): 
+        #         embedding.append(model["name"])  
+        #         break
+
+
+    logger.info(f"{language} | {embedding} | {vision}")
+
+    # if language is None:
+    if len(language) < 1: 
         logger.critical(f"No Language models identified | {models}")
         print("No Language models found, check logs and system for models")
     else: 
         logger.info(f"Language models found | {language}")
     
-    # if len(embedding) < 1:
-    if embedding is None: 
+    # if embedding is None: 
+    if len(embedding) < 1:
         logger.critical(f"No Embedding models identified | {models}")
         print("No Embedding models found, check logs and system for models")
     else: 
         logger.info(f"Embedding models found | {embedding}")
 
-    return language, embedding
+    if len(vision) < 1:
+        logger.warning(f"No Vision models identified | {vision}")
+    else:
+        logger.info(f"Vision models found | {vision}")
+
+    return language, embedding, vision
 
 
 def stop_command():
@@ -469,7 +480,7 @@ def update_drop_down(choices: list, request: gr.Request,
         return gr.Dropdown(choices = choices)
     else:
         # logger.info(f"Updating drop down | []") 
-        return gr.Dropdown(choices = [])
+        return gr.Dropdown(choices = None)
 
 
 def update_number(value):
@@ -497,6 +508,11 @@ def update_system_prompt(new_prompt, current):
         return new_prompt.strip(), new_prompt.strip(), ""
     return current, current, ""
 
+
+def update_textarea(message):
+    '''
+    '''
+    return gr.TextArea(value = message)
 
 def update_textbox(message):
     '''

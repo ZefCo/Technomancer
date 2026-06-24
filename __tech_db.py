@@ -25,7 +25,7 @@ from __tech_fn import (
                        change_state, change_state_list, chunking_type,
                        export_tags, 
                        list_length, 
-                       update_slider, update_textbox,  update_drop_down
+                       update_textarea, update_textbox,  update_drop_down
                        )
 
 
@@ -34,12 +34,12 @@ def create_db():
     '''
     documents_list_state = gr.State(value = [])
     chunk_list_state = gr.State(value = [])
+    empty_list_state = gr.State(value = [])  # these two are just to make things empty/clear them when things are selected
+    empty_text_state = gr.State(value = "")
+    none_state = gr.State(value = None)  # in case I need to pass none
     # metadata_tags_list_state = gr.State(value = [])
-    with gr.Blocks(fill_height = True) as db:
 
-        # local_embedding_state = gr.State(value = "")  # this is just because I don't want to import gradio to __rag_pipeline.py
-        
-        # with gr.Row():
+    with gr.Blocks(fill_height = True) as db:
 
         with gr.Accordion(label = "Database of Holding Management", open = True) as DBoH_acc:
             gr.Markdown("/* Not yet implemented")
@@ -59,12 +59,10 @@ def create_db():
             with gr.Row(variant= "panel"):
                 local_embedding_box = gr.Textbox(label = "Embedding used for document", value = "", interactive = False)
                 local_lang_dd = gr.Dropdown(label = "Language Model for regenerating chunks", choices = [], interactive = True)
+                local_vis_dd = gr.Dropdown(label = "Vision Model for regenerating chunks", choices = [], interactive = True)
                 local_chunk_summary_num = gr.Number(label = "Chunks to summarize", value = 10, precision = 0)
                 gen_summary_btn = gr.Button(value = "Regenerate Summary")
                 generate_status_box = gr.Textbox(label = "Status*", value = "Warning, there are no status updates as of yet")
-                # with gr.Column():
-                    # more_metadata_btn = gr.Button(value = "Add Metadata", scale = 1)
-                # with gr.Column():
 
             with gr.Row(variant="panel"):
                 chunks_dd = gr.Dropdown(label = "Document Chunk IDs", interactive = True, scale = 10)
@@ -72,79 +70,93 @@ def create_db():
             with gr.Row(variant="panel"):
                 chunk_data_area = gr.TextArea(label = "Document Data", info = "Can be edited*", scale = 10)
                 with gr.Column():
-                    chunk_data_btn = gr.Button(value = "Update Text*", scale = 1)
+                    chunk_update_btn = gr.Button(value = "Update Text*", scale = 1)
                     chunk_del_btn = gr.Button(value = "Delete Chunk*", scale = 1)
-                    quality_score_box = gr.Textbox(label = "Quality Score", interactive = False, value = "")
-                    page_location_box = gr.Textbox(label = "Page Source", interactive = False, value = "")
-                    chunk_type_box = gr.Textbox(label = "Metadatas*", interactive = False, value = "")
+            with gr.Row():
+                page_location_box = gr.Textbox(label = "Page Source", interactive = False, value = "")
+                chunk_type_box = gr.Textbox(label = "Chunk Type", interactive = False, value = "")
+                extraction_method_box = gr.Textbox(label = "Extraction Method:", interactive = False, value = "")
+            with gr.Row():
+                quality_score_box = gr.Textbox(label = "Chunk Quality Score", interactive = False, value = "")
+                angle_score_box = gr.Textbox(label = "Angeled Score (1.0 is perfectly vertical)", interactive = False, value = "")
+                double_score_box = gr.Textbox(label = "Doubled Letter Ratio", interactive = False, value = "")
+                ave_word_score_box = gr.Textbox(label = "Average Words", interactive = False, value = "")
+                word_len_score_box = gr.Textbox(label = "Suspicious Word Length", interactive = False, value = "")
+                text_len_score_box = gr.Textbox(label = "Text Length", interactive = False, value = "")
+                has_images_box = gr.Textbox(label = "Has Images", interactive = False, value = "")
+
 
             with gr.Row(variant="panel"):
                 with gr.Column():
-                    chunk_tags_dd = gr.Dropdown(choices = [], label = "Metadata Tags*", interactive = True, multiselect = True, allow_custom_value = True)
+                    chunk_tags_dd = gr.Dropdown(choices = [], label = "Metadata Tags", interactive = True, multiselect = True, allow_custom_value = True)
                     chunk_tags_add_btn = gr.Button(value = "Add Metadata Tags*")
-
-            # with gr.Row(variant="panel"):
-            #     gr.Markdown("Note on Deletion: This deletes all things based on the file name of the book. If the book name is close enough to [an]other book[s], it is possible that the other book[s] will be delete too! Check to make sure that the books you want to stay in the database are in fact still there!")
 
             with gr.Row(variant="panel"):
                 with gr.Accordion(label = "Delete Entire Rule System", open = False):
                     gr.Markdown("This will delete the entire rule system, along with all books and documents associated with it. It *cannot* be undone.\nYou can Remove a given rule set, clearing out the entire set of documents!\nTo delete the entire database: you must manually delete it from your system. Yes it is possible to add that functionality here, but because no one wants to accidentally delete their database, that has to be done manually.")
                     del_collection_btn = gr.Button(value = "Removes Rule System (The Nuclear Option)")
-                    # clear_collection_btn = gr.Button(value = "Clears a Rule System of all documents (empties rule system - not yet implemented)")
-                    # del_everything_btn = gr.Button(value = "Reset entire database (the BIGGER red button)")
-
-        with gr.Accordion(label = "Document Chunks", open = False) as doc_chunks:
-            gr.Markdown("This is for listing all the chunks of the selected document")
-
                 
         with gr.Accordion(label = "Quarantined Documents", open = False) as quarantine:
             gr.Markdown("This is for quarantined documents with low QS.")
+
+        available_rule_systems_dd.select(
+                   fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_list_state]
+            ).then(fn = update_drop_down, inputs = [none_state], outputs = [available_documents_dd]
+            ).then(fn = update_drop_down, inputs = [documents_list_state], outputs = [available_documents_dd]
+            ).then(fn = list_length, inputs = [documents_list_state], outputs = [available_documents_textbox]
+            ).then(fn = update_drop_down, inputs = [none_state], outputs = [all_metadata_dd]
+            ).then(fn = update_drop_down, inputs = [none_state], outputs = [chunks_dd]
+            ).then(fn = update_textbox, inputs = [empty_text_state], outputs = [chunks_len_box]
+            ).then(fn = update_textbox, inputs = [empty_text_state], outputs = [page_location_box]
+            ).then(fn = update_textbox, inputs = [empty_text_state], outputs = [chunk_type_box]
+            ).then(fn = update_textbox, inputs = [empty_text_state], outputs = [extraction_method_box]
+            ).then(fn = update_textbox, inputs = [empty_text_state], outputs = [quality_score_box]
+            ).then(fn = update_textbox, inputs = [empty_text_state], outputs = [angle_score_box]
+            ).then(fn = update_textbox, inputs = [empty_text_state], outputs = [double_score_box]
+            ).then(fn = update_textbox, inputs = [empty_text_state], outputs = [ave_word_score_box]
+            ).then(fn = update_textbox, inputs = [empty_text_state], outputs = [word_len_score_box]
+            ).then(fn = update_textbox, inputs = [empty_text_state], outputs = [text_len_score_box]
+            ).then(fn = update_textbox, inputs = [empty_text_state], outputs = [has_images_box]
+            ).then(fn = update_textarea, inputs = [empty_text_state], outputs = [chunk_data_area]
+            )
         
-                
-        # add_doc_tags.click(fn = change_state_list, inputs = [metadata_tags_dd], outputs = [document_tags_s])
-        # add_doc_tags.click(fn = change_state_list, inputs = [metadata_tags_dd], outputs = [tags_list_state])
-
-        available_rule_systems_dd.select(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_list_state]).then(fn = update_drop_down, inputs = [documents_list_state], outputs = [available_documents_dd]).then(fn = list_length, inputs = [documents_list_state], outputs = [available_documents_textbox])
-        available_documents_dd.select(fn = get_metadata, inputs = [available_rule_systems_dd, available_documents_dd], outputs = [all_metadata_dd, local_embedding_box]).then(fn = find_chunks, inputs = [available_rule_systems_dd, available_documents_dd], outputs = [chunk_list_state, chunks_len_box]).then(fn = update_drop_down, inputs = [chunk_list_state], outputs = [chunks_dd])
+        available_documents_dd.select(
+                   fn = get_metadata, inputs = [available_rule_systems_dd, available_documents_dd], outputs = [all_metadata_dd, local_embedding_box]
+            ).then(fn = find_chunks, inputs = [available_rule_systems_dd, available_documents_dd], outputs = [chunk_list_state, chunks_len_box]
+            ).then(fn = update_drop_down, inputs = [chunk_list_state], outputs = [chunks_dd]
+            )
         
-        chunks_dd.select(fn = find_chunk, inputs = [available_rule_systems_dd, chunks_dd], outputs = [chunk_data_area, chunk_tags_dd, page_location_box, chunk_type_box, quality_score_box])
+        chunks_dd.select(
+                   fn = find_chunk, inputs = [available_rule_systems_dd, chunks_dd], outputs = [chunk_data_area, chunk_tags_dd, page_location_box, quality_score_box, chunk_type_box, extraction_method_box, angle_score_box, double_score_box, ave_word_score_box, word_len_score_box, text_len_score_box, has_images_box]
+            )
 
-        del_collection_btn.click(fn = delete_collection, inputs = [available_rule_systems_dd], outputs = [rule_system_state]).then(fn = find_collections, outputs = [rule_systems_list_state]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [available_rule_systems_dd])
-        delete_document_btn.click(fn = delete_document, inputs = [available_rule_systems_dd, available_documents_dd]).then(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_list_state]).then(fn = update_drop_down, inputs = [documents_list_state], outputs = [available_documents_dd]).then(fn = list_length, inputs = [documents_list_state], outputs = [available_documents_textbox])
-        # # del_everything_btn.click(fn = delete_collection, inputs = [available_rule_systems_dd, true_state]).then(fn = find_collections, outputs = [rule_system_state]).then(fn = update_drop_down, inputs = [rule_system_state], outputs = [rule_systems_dd]).then(fn = update_drop_down, inputs = [rule_system_state], outputs = [available_documents_dd])
-
-        # embed_models_dd.select(fn = change_state, inputs = [embed_models_dd, embed_model_state, true_state, name_embed_state], outputs = [embed_model_state]).then(fn = update_textbox, inputs = [embed_model_state], outputs = [embed_textbox])
-
-        gen_summary_btn.click(fn = generate_summary, inputs = [available_rule_systems_dd, available_documents_dd, local_embedding_box, local_lang_dd, local_chunk_summary_num])
-
-        # more_metadata_btn.click(fn = update_metadata, inputs = [available_rule_systems_dd, available_documents_dd, all_metadata_dd])
-
-        # rule_system_add_btn.click(fn = change_state, inputs = [rule_systems_dd, rule_system_state, true_state, name_rule_state], outputs = [rule_system_state]).then(fn = create_collection, inputs = [rule_system_state]).then(fn = append_state_list, inputs = [rule_systems_list_state, rule_system_state], outputs = [rule_systems_list_state]).then(fn = update_drop_down, inputs = [rule_systems_list_state, rule_system_state], outputs = [rule_systems_dd]).then(fn = update_drop_down, inputs = [rule_systems_list_state, rule_system_state], outputs = [available_rule_systems_dd]).then(update_textbox, inputs = [rule_system_state], outputs = [selected_rule_system])
-
-        refresh_rules_btn.click(fn = find_collections, outputs = [rule_systems_list_state]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [available_rule_systems_dd])
-        # refresh_rules_btn_1.click(fn = find_collections, outputs = [rule_systems_list_state]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [available_rule_systems_dd]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [rule_systems_dd])
-        # rule_systems_dd.select(fn = change_state, inputs = [rule_systems_dd, rule_system_state, true_state, name_rule_state], outputs = [rule_system_state]).then(fn = update_textbox, inputs = [rule_system_state], outputs = [selected_rule_system])
+        del_collection_btn.click(
+                   fn = delete_collection, inputs = [available_rule_systems_dd], outputs = [rule_system_state]
+            ).then(fn = find_collections, outputs = [rule_systems_list_state]
+            ).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [available_rule_systems_dd]
+            )
         
-        # save_tags.click(fn = append_state_list, inputs = [tags_list_state, metadata_tags_dd], outputs = [tags_list_state]).then(fn = update_drop_down, inputs = [tags_list_state], outputs = [metadata_tags_dd]).then(fn = export_tags, inputs = [tags_list_state])
+        delete_document_btn.click(
+                   fn = delete_document, inputs = [available_rule_systems_dd, available_documents_dd]
+            ).then(fn = find_documents, inputs = [available_rule_systems_dd], outputs = [documents_list_state]
+            ).then(fn = update_drop_down, inputs = [documents_list_state], outputs = [available_documents_dd]
+            ).then(fn = list_length, inputs = [documents_list_state], outputs = [available_documents_textbox]
+            )
 
-        # lang_model_sum_dd.select(fn = change_state, inputs = [lang_model_sum_dd, lang_model_state, true_state, name_lang_state], outputs = [lang_model_state])
+        gen_summary_btn.click(
+                   fn = generate_summary, inputs = [available_rule_systems_dd, available_documents_dd, local_embedding_box, local_lang_dd, local_chunk_summary_num]
+            )
 
-        # upload_file_space.upload(fn = change_state, inputs = [rule_systems_dd], outputs = [rule_system_state]).then(fn = append_state_list, inputs = [rule_systems_list_state, rule_system_state], outputs = [rule_systems_list_state]).then(fn = update_drop_down, inputs = [rule_systems_list_state, rule_system_state], outputs = [rule_systems_dd]).then(fn = update_drop_down, inputs = [rule_systems_list_state, rule_system_state], outputs = available_rule_systems_dd).then(fn = load_documents, inputs = [upload_file_space, rule_system_state, embed_model_state, lang_model_state, metadata_tags_dd, chunk_size_state, chunk_overlap_state, chunk_batches_state, chunk_summary_state, save_chunk_state, save_sum_state], outputs = [upload_status_box])
+        refresh_rules_btn.click(
+                   fn = find_collections, outputs = [rule_systems_list_state]
+            ).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [available_rule_systems_dd]
+            )
 
     return db, {
-        # "chunk_batch": c_batch_slide,
-        # "chunk_overlap": c_overlap_slide,
-        # "chunk_size": c_size_slide,
-        # "chunk_sum": c_summary_slide,
-        # "embed_models_dd": embed_models_dd, 
-        # "embed_textbox": embed_textbox, 
         "lang_model_sum_dd": local_lang_dd,
-        # "metadata_tags_dd": metadata_tags_dd, 
         "rule_systems_dd": available_rule_systems_dd, 
-        # "rule_systems_dd_2": rule_systems_dd, 
-        # "upload_status_box": upload_status_box
+        "vis_model_dd": local_vis_dd
         }
-    # return upload
 
 
 if __name__ in "__main__":
