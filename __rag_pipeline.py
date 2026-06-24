@@ -31,17 +31,27 @@ from __log_context import set_current_user
 import ollama
 import os
 
+# from __tech_fn import import_settings   # this might get me in trouble in the long run, and I may need to have an import settings function here.
 import toml
 
 from rank_bm25 import BM25Okapi
 
 cwd = pathlib.Path.cwd()
-chroma_database_dir = cwd / "DB_of_Holding"
+# chroma_database_dir = cwd / "DB_of_Holding"
+
+with open(cwd / "Settings" / "Settings.toml", "r") as file:
+    SETTINGS = toml.load(file)
+    user_CHROMA_PORT: int = int(SETTINGS["ports"]["chroma"])
+    user_OLLAMA_HOST: int = int(SETTINGS["ports"]["ollama"])
+    QUALITY_THRESHOLDS = SETTINGS["QUALITY_THRESHOLDS"]
+del SETTINGS  # all the settings don't need to be held here.
+     
 
 CHROMA_HOST = os.environ.get("CHROMA_HOST", "localhost")
-CHROMA_PORT = int(os.environ.get("CHROMA_PORT", 8000))
+CHROMA_PORT = int(os.environ.get("CHROMA_PORT", user_CHROMA_PORT))
 _chroma_client = None
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", f"http://localhost:{user_OLLAMA_HOST}")
+
 
 with open(cwd / "Settings" / "EnrichTags.toml", "r") as file:
     enrich_keywords = toml.load(file)
@@ -223,7 +233,7 @@ def delete_document(hr_collection, metadata, request: gr.Request):
     except Exception as e:
         logger.critical(f"Error deleting chunks for the document with metadata {metadata} | {hr_collection} | {type(e)} | {e}")
     else:
-        documents = find_documents(hr_collection)
+        documents = find_documents(hr_collection, request)
         logger.info(f"Documents left | {hr_collection} | {documents}")
 
 
@@ -250,7 +260,7 @@ def _direct_response(message: str, history: list, lang_model: str):
                 yield response
     except Exception as e:
         logger.critical(f"Unable to generate response | Type: {type(e)} | {e}")
-        raise ZeroDivisionError
+        raise
 
 
 def _enrich_chunk_metadata(chunks, game_system: str, embed_model: str):
@@ -277,8 +287,8 @@ def _enrich_chunk_metadata(chunks, game_system: str, embed_model: str):
                 auto_tags.add(term)
 
         chunk.metadata["game_system"] = game_system
-        chunk.metadata["auto_tags"] = fill_list(list(sorted(auto_tags)))  # ",".join(sorted(auto_tags))
-        chunk.metadata["tags"] = fill_list(list(sorted(auto_tags)))  # ",".join(sorted(auto_tags))  # I'm separating them like this so I can see what was added and what I added.
+        chunk.metadata["auto_tags"] = fill_list(list(sorted(auto_tags)), game_system = game_system)  # ",".join(sorted(auto_tags))
+        chunk.metadata["tags"] = fill_list(list(sorted(chunk.metadata["auto_tags"])))  # ",".join(sorted(auto_tags))  # I'm separating them like this so I can see what was added and what I added.
         chunk.metadata["embedding_used"] = embed_model
 
         # existing_tags = set(chunk.metadata.get("tags", "").split(",")) - {""}  # This is just to make sure that the set doesn't have any weird things in it
@@ -327,13 +337,44 @@ def find_chunk(hr_collection: str, ids: str, request: gr.Request):
     # uris -> ?
     # what was included to find it
 
-    metadata_tags: list = local_chunk["metadatas"][0]["tags"]
-    document_data: str = local_chunk["documents"][0]
-    page_source: str = str(local_chunk["metadatas"][0].get("source_pages", "?"))
-    chunk_type: str = local_chunk["metadatas"][0].get("chunk_type", "?")
-    quality_score: str = local_chunk["metadatas"][0].get("QS", "?")
+    # "angled_ratio": angled_ratio,
+    # "doubled_ratio": doubled_ratio,
+    # "word_count": word_count,
+    # "ave_word_len": round(ave_word_len, 2),
+    # "word_len_suspicious": word_len_suspicious,
+    # "text_length": len(text),
+    # "has_images_only": chunk_metadata.get("is_sparse", False) and chunk_metadata.get("has_images", False),
 
-    return gr.TextArea(value = document_data), gr.Dropdown(value=metadata_tags), gr.Textbox(value = page_source), gr.Textbox(value = chunk_type), gr.Textbox(value = quality_score)
+    # logger.critical(f"{local_chunk['metadatas'][0]}")
+
+    chunk_type: str = local_chunk["metadatas"][0].get("chunk_type", "?")
+    document_data: str = local_chunk["documents"][0]
+    extraction_method: str = local_chunk["metadatas"][0].get("extraction_method", "?")
+    metadata_tags: list = local_chunk["metadatas"][0].get("tags", "")
+    page_source: str = str(local_chunk["metadatas"][0].get("page", "?"))
+
+    quality_score: float = local_chunk["metadatas"][0].get("quality_score", "?")
+    angled_score = local_chunk["metadatas"][0].get("angled_ratio", "?")
+    doubled_score = local_chunk["metadatas"][0].get("doubled_ratio", "?")
+    ave_word_score = local_chunk["metadatas"][0].get("ave_word_len", "?")
+    word_len_score = local_chunk["metadatas"][0].get("word_len_suspicious", "?")
+    text_length = local_chunk["metadatas"][0].get("text_length", "?")
+    has_images_bool = local_chunk["metadatas"][0].get("has_images_only", "?")
+
+    return (
+        gr.TextArea(value = document_data), 
+        gr.Dropdown(value = metadata_tags), 
+        gr.Textbox(value = page_source), 
+        gr.Textbox(value = str(quality_score)), 
+        gr.Textbox(value = chunk_type), 
+        gr.Textbox(value = extraction_method),
+        gr.Textbox(value = str(angled_score)),
+        gr.Textbox(value = str(doubled_score)),
+        gr.Textbox(value = str(ave_word_score)),
+        gr.Textbox(value = str(word_len_score)),
+        gr.Textbox(value = str(text_length)),
+        gr.Textbox(value = str(has_images_bool))
+        )
 
 
 
@@ -428,13 +469,13 @@ def find_documents(hr_collection, request: gr.Request):
     return list(titles)
 
 
-def fill_list(input_list: list, game_system: str = "Generic") -> list:
+def fill_list(input_list: list, game_system: str = "") -> list:
     '''
     Makes sure that the list is populated with at least one thing.
 
     the list(set(list)) is to make sure that it is a list, that everything is unique, and that it is still a list, and that it's sorted.
     '''
-    return list(sorted(set([game_system] + input_list)))
+    return list(sorted(set([game_system] + input_list) - {""}))  # the - {""} is to remove a potential "" that gets added.
     # else: return [game_system]
 
 
@@ -544,7 +585,7 @@ def _generate_section_summary(chunks: list, lang_model: str, section_size: int =
     section_index = -1
     game_system = chunks[0].metadata["game_system"]
     file_path = chunks[0].metadata["source"]
-    base_id = f"{str(pathlib.Path(file_path).stem)}:summary"
+    base_id = f"{game_system}:{str(pathlib.Path(file_path).stem)}:summary"
 
 
     for i in range(0, len(chunks), section_size):
@@ -567,7 +608,7 @@ def _generate_section_summary(chunks: list, lang_model: str, section_size: int =
                                                 {combined_text}"""}])
         except Exception as e:
             logger.critical(f"Unable to generate summary | Type: {type(e)} | {e}")
-            raise ZeroDivisionError
+            raise
         
         summary_text = response["message"]["content"]
 
@@ -582,7 +623,7 @@ def _generate_section_summary(chunks: list, lang_model: str, section_size: int =
                                            "source": file_path,
                                            "source_pages": f"{section[0].metadata.get('page', '?')}-{section[-1].metadata.get('page', '?')}",
                                            "original_chunk_count": len(section),
-                                           "id": f"{base_id}:{section_index}",
+                                           "id": f"{base_id}:{first_chunk.metadata.get('page', '?')}-{section[-1].metadata.get('page', '?')}:{section_index}",
                                            "Title": f"{first_chunk.metadata.get("Title", game_system)}",  # this will be handled later, if None, pull from the source file
                                            "Pages": f"{first_chunk.metadata.get('page', '?')} - {section[-1].metadata.get('page', '?')}"
                                            })
@@ -626,8 +667,8 @@ def _get_embeddings(embed_model, search_doc = False):
     Part of RAG Input
     '''
     if search_doc:
-        return OllamaEmbeddings(model = embed_model, model_kwargs = {"prompt": "search_document:"}, base_url=OLLAMA_HOST)
-    return OllamaEmbeddings(model = embed_model, base_url=OLLAMA_HOST)
+        return OllamaEmbeddings(model = embed_model, model_kwargs = {"prompt": "search_document:"}, base_url = OLLAMA_HOST)
+    return OllamaEmbeddings(model = embed_model, base_url = OLLAMA_HOST)
 
 
 def _get_hybrid_retriever(hr_collection: str, embed_model: str, 
@@ -639,17 +680,6 @@ def _get_hybrid_retriever(hr_collection: str, embed_model: str,
         return _hybrid_search(query, hr_collection, embed_model, k = k, alpha = alpha, tags = tags)
     
     return RunnableLambda(retrieve)
-
-
-# def _get_multi_retriever(collections: list[str], k: int = 5):
-#     '''
-#     Returns a single retriever that searches across multiple collections. Merges results and returns the top k across all of them.
-#     '''
-#     from langchain_core.retrievers import MergerRetriever
-
-#     retrievers = [_get_retriever(col, k = k) for col in collections]
-
-#     return MergerRetriever(retrievers = retrievers)
 
 
 def get_metadata(hr_collection: str, title: str, request: gr.Request):
@@ -664,8 +694,11 @@ def get_metadata(hr_collection: str, title: str, request: gr.Request):
     logger.info(f"Getting metadata tags for {title} | {hr_collection} | {collection}")
 
     results = collection.get(where = {"Title": title})
-    # print(results["metadatas"][0])
-    embedding_used: str = results["metadatas"][0]["embedding_used"] or ""
+    if len(results["metadatas"]) < 1:
+        return ["Document not found"], gr.Textbox(value = "Document not found")
+    
+    # print(results["metadatas"], list(results.keys()))
+    embedding_used: str = results["metadatas"][0].get("embedding_used", "?")
     tags = set()
 
     for result_tags in results["metadatas"]:
@@ -675,37 +708,18 @@ def get_metadata(hr_collection: str, title: str, request: gr.Request):
         except Exception as e:
             logger.error(f"Error tying to pull metadatas | {title} | {hr_collection} | {ascii_collection} | {type(e)} | {e}")
             continue
-    # try:
-    #     local_tags = results["metadatas"][0]["tags"]  # if this is done right, the only thing that needs to be pulled is the first index. They all should have the same metadatas
-    # except IndexError as e:
-    #     logger.error(f"Index Error trying to pull metadata | {title} | {hr_collection} | {type(results)} | {len(results)}")
-    #     return []
-    # except Exception as e:
-    #     logger.error(f"Error trying to pull metadatas | {title} | {hr_collection} | {ascii_collection} | {type(results)} - expected to be type dict | {type(e)} | {e}")
-    #     return []
 
-    # logger.info(f"Returning tags | {local_tags}")
-
-    # return local_tags.split(","), embedding_used
-    # tags = tags - {""}
     return list(tags), gr.Textbox(value = embedding_used)
 
 
-
-# def get_title(entry):
-#     '''
-#     Returns a single entry in the database.
-#     '''
-#     title = item.get("Title", None)
-#     for item in results["metadatas"]:
-#         title = item.get("Title", None)
-#         try:
-#             if title: titles.add(title)
-#             else: titles.add(pathlib.Path(item["source"]).stem)  # this is in case the title doesn't have a Title.
-#         except Exception as e:
-#             logger.warning(f"Cannont find title or source in item retreived from collection {hr_collection} | Error type {type(e)} | {e}")
-#         else:
-
+def _get_quarantine_collection(hr_quarantine: str):
+    '''
+    Gets the quarantine version of the collection, for pushing the low scoring collections to their own area to be healed later.
+    '''
+    client = _get_client()
+    ascii_quarantine = _clean_collection(hr_quarantine)
+    # quarantine_name = _quarantine_collection_name(ascii_collection)
+    return client.get_or_create_collection(name = ascii_quarantine)
 
 
 @lru_cache(maxsize = 8)
@@ -783,8 +797,8 @@ def _get_query_embeddings(embeddings: str, search_query: bool = False):
     This allows for the use of the search query prefix in nomic-embed-text. The others, mixed bread and snowflake artic, will come eventually.
     '''
     if search_query:
-        return OllamaEmbeddings(model = embeddings, model_kwargs = {"prompt": "search_query:"}, base_url=OLLAMA_HOST)
-    return OllamaEmbeddings(model = embeddings, base_url=OLLAMA_HOST)
+        return OllamaEmbeddings(model = embeddings, model_kwargs = {"prompt": "search_query:"}, base_url = OLLAMA_HOST)
+    return OllamaEmbeddings(model = embeddings, base_url = OLLAMA_HOST)
 
 
 def _gradio_history_to_langchain(history: list):
@@ -936,6 +950,9 @@ def _load_document_column_aware_alt(file_path: pathlib.Path) -> list:
 
 def _load_document_column_aware(file_path: pathlib.Path) -> list:
     '''
+    This checks for two columns and tries to parse if it sees an unusual position of them (think Delta Green).
+
+    What this also does is score each page, which really should be done as a separate area.
     '''
     import pdfplumber
     documents = []
@@ -961,11 +978,13 @@ def _load_document_column_aware(file_path: pathlib.Path) -> list:
             else:
                 text: str = page.extract_text() or ""
                 extraction_method = "standard"
+
+            page_score = _score_page_quality(page, text)
             
             if text.strip():
-                documents.append(Document(page_content=text, metadata = {"source": str(file_path), "page": i, "extraction_method": extraction_method}))
+                documents.append(Document(page_content=text, metadata = {"source": str(file_path), "page": i, "extraction_method": extraction_method, **page_score}))
 
-            logger.info(f"Page {i}: {extraction_method} extraction | {len(text)} chars")
+            # logger.info(f"Page {i}: {extraction_method} extraction | {len(text)} chars")
 
     return documents
 
@@ -1060,48 +1079,87 @@ def load_documents(file, hr_collection, embed_model, lang_model,
             return f" Error writing summary to database: {e}"
 
 
-def _load_to_Chroma(chunks, collection, embed_model, 
-                    add_ids: bool = True, batch_size = 50, tags: list | None = None, title: str | None = None,
+def _load_to_Chroma(chunks, ascii_collection, embed_model, 
+                    add_ids: bool = True, batch_size = 50, game_system: str | None = None, title: str | None = None,
                     *args, **kwargs):
     '''
     Loads the documents to a Chroma DB
 
     Part of RAG Input
     '''
-    hr_collection = human_collection(collection)
+    hr_collection = human_collection(ascii_collection)
+    embeddings = _get_embeddings(embed_model)
     # db = Chroma(persist_directory = str(chroma_database_dir), embedding_function = _get_embeddings(embed_model), collection_name = collection)  # get embeddings here never uses the search doc prefix. Think about turning that on at some point.
-    db = Chroma(client=_get_client(), embedding_function = _get_embeddings(embed_model), collection_name = collection)  # get embeddings here never uses the search doc prefix. Think about turning that on at some point.
+    db = Chroma(client=_get_client(), embedding_function = embeddings, collection_name = ascii_collection)  # get embeddings here never uses the search doc prefix. Think about turning that on at some point.
 
-    if add_ids: chunks = _metadata_IDs(chunks)
+    quar_db = _get_quarantine_collection(f"{hr_collection}_quarantine")
 
     existing_items = db.get(include = [])
     existing_ids = set(existing_items["ids"])
 
+    if add_ids: chunks = _metadata_IDs(chunks, unique_key = len(existing_ids), title = title)
+
+    try:
+        existing_quarantine = quar_db.get(include = [])
+        existing_ids |= set(existing_quarantine["ids"])  # adds the quarantine collection to the stuff, to make sure that nothing is re-ingested by accident.
+    except Exception as e:
+        pass  # I can't believe Claude would write a bare except. I mean it's probably nothing, but still.
+
     # new_chunks = [c for c in chunks if c.metadata["id"] not in existing_ids]
     new_chunks = []
+    quar_chunks = []
+
     for chunk in chunks:
-        if chunk.metadata["id"] not in existing_ids:
-            t = chunk.metadata.get("Title", None)
-            if t is None: chunk.metadata["Title"] = title  # this is to make sure that the document/chunk has a title.
-            # chunk.metadata["game_system"] = hr_collection
-            # chunk.metadata["tags"] = ",".join(tags) if tags else ""  # chormaDB doesn't allow lists to be part of the metadata, it has to be a string.
-            new_chunks.append(chunk)
+        if chunk.metadata["id"] in existing_ids: continue
+        else:
+            chunk.metadata |= _score_chunk_quality(chunk.metadata, chunk.page_content)
+            chunk.metadata["Title"] = chunk.metadata.get("Title", title)  # Just reassigning it, because for some reason the title isn't always there. I should pull apart a bunch of PDFs to see if the title is always there or not.
 
-    if not new_chunks:
-        logger.info(f"No new chunks to add to {hr_collection}")
-        return
-    
-    logger.info(f"Adding {len(new_chunks)} new chunks | Collection: {hr_collection} | Batches: {batch_size} ")
+        if chunk.metadata.get("quality_pass", True): new_chunks.append(chunk)
+        else: quar_chunks.append(chunk)
 
-    for i in range(0, len(new_chunks), batch_size):
-        batch = new_chunks[i: i + batch_size]
-        batch_ids = [c.metadata["id"] for c in batch]
+    if new_chunks:
+        logger.info(f"Adding {len(new_chunks)} new chunks | Collection: {hr_collection} | Batches: {batch_size} ")
+
+        for i in range(0, len(new_chunks), batch_size):
+            batch = new_chunks[i: i + batch_size]
+            batch_ids = [c.metadata["id"] for c in batch]
+            try:
+                db.add_documents(batch, ids = batch_ids)
+                logger.info(f"Batch {i // batch_size + 1}/{-(-len(new_chunks)//batch_size)} complete | {min(i + batch_size, len(new_chunks))}/{len(new_chunks)} chunks added")
+            except Exception as e:
+                logger.error(f"Failed on batch {i//batch_size + 1} | {type(e)} | {e}")
+                raise
+
+    else:
+        logger.warning(f"No new chunks to add to {hr_collection}")
+
+    if quar_chunks:
+        # dimensions = embeddings.dimensions
+        dimension_vector = OllamaEmbeddings(model = embed_model)
+        vector = dimension_vector.embed_query("dimension check")
+        dimensions = len(vector)  # this creates a dummy vector to figure out what the vector size is becuase embeddings.dimensions didn't work, came back with None
+
+        logger.warning(f"Adding {len(quar_chunks)} new chunks | Collection: {hr_collection}_quarantine | Batches: {batch_size}")
+
+        q_ids = [c.metadata["id"] for c in quar_chunks]
+        q_docs = [c.page_content for c in quar_chunks]
+        q_metas = [c.metadata for c in quar_chunks]
+
         try:
-            db.add_documents(batch, ids = batch_ids)
-            logger.info(f"Batch {i // batch_size + 1}/{-(-len(new_chunks)//batch_size)} complete | {min(i + batch_size, len(new_chunks))}/{len(new_chunks)} chunks added")
+            quar_db.add(
+                        ids = q_ids,
+                        documents = q_docs,
+                        metadatas = q_metas,
+                        embeddings = [[0.0] * dimensions] * len(quar_chunks)
+                        )
         except Exception as e:
-            logger.error(f"Failed on batch {i//batch_size + 1} | {type(e)} | {e}")
+            logger.error(f"Failed to quarantine files | {type(e)} | {e}")
             raise
+        else:
+            logger.warning(f"Finished adding quarantined chunks | {hr_collection}_quarantine")
+    
+
 
 
 def _looks_like_stat_block(text: str) -> bool:
@@ -1146,7 +1204,7 @@ def _looks_like_table(text: str) -> bool:
     return False
 
 
-def _metadata_IDs(chunks, summary: bool = False, *args, **kwargs):
+def _metadata_IDs(chunks, title: str | None = None, unique_key = 0):
     '''
     Assigns a new metadata ID to the item. The metadata tag is: source document: page: chunk index. The chunk index for each document goes from [0, max chunks].
     
@@ -1154,12 +1212,15 @@ def _metadata_IDs(chunks, summary: bool = False, *args, **kwargs):
     '''
     last_page_id = None
     current_chunk_index = 0
+    # title = title or "?"
+    title = chunks[0].metadata.get("Title", title) or f"Doc_{unique_key}"
+    base_page_id = f"{chunks[0].metadata.get('game_system', f'Generic_{unique_key}')}:{title}:chunk"
 
     # there could be something here, like checking to see if the metadata was properly added, but I'm not sure. I might be logging things to log them.
     for chunk in chunks:
-        source = chunk.metadata.get("source")
+        # source = chunk.metadata.get("source")
         page = chunk.metadata.get("page")
-        current_page_id = f"{source}:{page}"
+        current_page_id = f"{base_page_id}:{page}"
 
         if current_page_id == last_page_id:
             current_chunk_index += 1
@@ -1170,6 +1231,8 @@ def _metadata_IDs(chunks, summary: bool = False, *args, **kwargs):
         last_page_id = current_page_id
 
         chunk.metadata["id"] = chunk_id
+
+    logger.warning(f"{chunks[0].metadata}")
 
     return chunks    
 
@@ -1191,53 +1254,6 @@ def _merge_retrievers(retrievers):
         return merged
     
     return RunnableLambda(retrieve)
-
-# # Because I'm going to change this to query routing, I'm debating how much this needs to be logged right now.
-# # Get response time for the query. Time it up to the last for loop
-# def query_rag(message: str, history: list, collection: str, model: str, embeddings: str, 
-#               *args, **kwargs): #type: ignore
-#     '''
-#     Streaming RAG query. Yields response chunks.
-#     Uses a single prompt that retrieves context but instructs the LLM
-#     to ignore it if irrelevant — handles both rules and general questions.
-
-#     Part of RAG Query
-#     '''
-#     # Check how many responses are returned.
-#     retriever = _get_retriever(collection, embeddings)
-#     llm = ChatOllama(model=model)
-
-#     prompt = ChatPromptTemplate.from_messages([
-#         ("system", """
-         
-#          Rulebook context has been retrieved and is provided below. Use it if it is 
-#          relevant to the question. If it is not relevant to the question, ignore it 
-#          entirely and answer conversationally from your own knowledge, but state 
-#          that you cannot find relevant information from the retrieved database.
-
-#         Retrieved context:
-#         {context}"""),
-#         MessagesPlaceholder(variable_name="history"),
-#         ("human", "{question}")
-#         ])
-
-#     lc_history = _gradio_history_to_langchain(history)
-
-#     chain = (
-#         {
-#             "context": (lambda x: x["question"]) | retriever | _format_docs,
-#             "question": lambda x: x["question"],
-#             "history": lambda x: x["history"]
-#         }
-#         | prompt
-#         | llm
-#         | StrOutputParser()
-#     )
-
-#     response = ""
-#     for chunk in chain.stream({"question": message, "history": lc_history}):
-#         response += chunk
-#         yield response
 
 
 def _normalize_scores(scores: list[float], flip: bool = False) -> list[float]:
@@ -1261,6 +1277,14 @@ def _normalize_scores(scores: list[float], flip: bool = False) -> list[float]:
         normalized = [1.0 - n for n in normalized]
 
     return normalized
+
+
+def _quarantine_collection_name(ascii_collection: str) -> str:
+    '''
+    Adds __quarantine to the end of the collection name, making it something that cannot be queried with the rest of the documents
+    '''
+    name = f"{ascii_collection}__quarantine"
+    return name[:512]
 
 
 def query_rag_routed(message: str, history: list, lang_model: str, embed_model: str, 
@@ -1397,15 +1421,76 @@ def _query_wants_table(msg: str) -> bool:
     return any(signal in msg_lower for signal in table_signals)
 
 
-
-def start_chroma_server(path: str | pathlib.Path, port: int):
+def _score_chunk_quality(chunk_metadata: dict, text: str) -> dict:
     '''
-    This will start the ChromaDB server. 
-
-    Will need to test this on Windows and Linux to make sure the thing works
+    Scores a chunk, which will determine if it goes into quarantine or not.
     '''
-    # chroma run --path str(path) --port {port}
+    words = text.split()
+    word_count = len(words)
 
+    # checks the double character ratio
+    doubled = sum(1 for i in range(len(text) - 1) if text[i] == text[i + 1] and text[i].isalpha())
+    doubled_ratio = doubled / max(len(text), 1)
+
+    # word length distribution
+    ave_word_len = sum(len(w) for w in words) / max(word_count, 1)
+
+    # very short ave word len suggests scattered single characters
+    # very long suggests words are being merged without spaces
+    word_len_suspicious = ave_word_len < 2.5 or ave_word_len > 12
+
+    angled_ratio = chunk_metadata.get("angled_ratio", 0.0)
+
+    scores = {
+        "angled_ratio": angled_ratio,
+        "doubled_ratio": doubled_ratio,
+        "word_count": word_count,
+        "ave_word_len": round(ave_word_len, 2),
+        "word_len_suspicious": word_len_suspicious,
+        "text_length": len(text),
+        "has_images_only": chunk_metadata.get("is_sparse", False) and chunk_metadata.get("has_images", False),
+        "extraction_method": chunk_metadata.get("extraction_method", "unknown")
+    }
+
+    # pass/fail
+    scores["quality_pass"] = (angled_ratio < QUALITY_THRESHOLDS["angled_ratio"]
+                              and doubled_ratio < QUALITY_THRESHOLDS["max_doubled_ratio"]
+                              and word_count >= QUALITY_THRESHOLDS["min_word_count"]
+                              and len(text) >= QUALITY_THRESHOLDS["min_text_length"]
+                              and not word_len_suspicious
+                              and not scores["has_images_only"])
+    
+    scores["quality_score"] = round(
+        1.0
+        - (angled_ratio * 0.4)
+        - (doubled_ratio * 0.3)
+        - (0.2 if word_len_suspicious else 0.0)
+        - (0.1 if scores["has_images_only"] else 0.0),
+        3
+    )
+
+    return scores
+
+
+
+def _score_page_quality(page, text: str) -> dict:
+    '''
+    Scores the page on a few different metrics:
+
+    Is it angled? This will require a vision model
+    Does is have a lot of images? This may also require a vision model or can be skipped.
+    What is the text density? If low then it might be the captioning of an image.
+    Is it sparse? This could be related to the previous metric, or it could be a chapter title, etc.
+    '''
+    chars = page.chars
+    total_chars = len(chars)
+
+    return{
+        "angled_ratio": sum(1 for c in chars if abs(c.get('matrix', (0,0,0,0,0,0))[1]) >= 0.1) / max(total_chars, 1),
+        "has_images": len(page.images) > 0,
+        "text_density": len(text) / max(page.width * page.height, 1),
+        "is_sparse": len(text) < 100,
+    }
 
 
 
