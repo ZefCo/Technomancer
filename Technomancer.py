@@ -180,7 +180,7 @@ def launch_technomancer():
                    inputs = [rule_systems_list_state], 
                    outputs = [db_components["rule_systems_dd"]]
             ).then(fn = update_drop_down, 
-                   inputs = [lang_models_list_state], 
+                   inputs = [lang_models_list_state, lang_model_state], 
                    outputs = [db_components["lang_model_sum_dd"]]
             ).then(fn = update_drop_down,
                    inputs = [vision_models_list_state, vision_model_state],
