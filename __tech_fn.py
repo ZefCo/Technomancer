@@ -150,6 +150,35 @@ def chunking_type(chunking_options, request: gr.Request):
         return False, False, gr.CheckboxGroup(info = "Warning: Nothing has been selected to be saved")
 
 
+
+def collect_metadata(
+        extraction_method: str, 
+        quality_score: float, 
+        page: int, 
+        text_length: int,
+        is_sparse: bool,
+        word_len_suspicious: bool, 
+        angled_ratio: float,
+        embedding_used: str
+        ):
+    '''
+    Collects and reorganizes the metadata. Things might get lost, like authors or publishers, but 
+    I'm going to try to avoid that, and also minimize it by only loosing things that are not important.
+
+    'id': 'Delta Green:Delta Green Agents Handbook:chunk:2:0', 'tags': ['Delta Green'], 'quality_pass': True, 'auto_tags': ['Delta Green'], 'ave_word_len': 5.75, 'Title': 'Delta Green Agents Handbook', 'text_density': 0.00519492308707995, 'doubled_ratio': 0.03125, 'chunk_type': 'text', 'has_images': True, 'has_images_only': False, 'word_count': 76, 'game_system': 'Delta Green', 'source': 'C:\\Users\\tokyo\\AppData\\Local\\Temp\\gradio\\8a0fe9aaf7c379f018c92555e559d27eb9b37be1fd3a9d7c7e251b8099551b58\\Delta Green Agents Handbook.pdf'}
+    '''
+    return {
+        "extraction_method": extraction_method,
+        'quality_score': quality_score, 
+        "page": page,
+        "text_length": text_length,
+        "is_sparse": is_sparse,
+        "word_len_suspicious": word_len_suspicious,
+        "angled_ratio": angled_ratio,
+        "embedding_used": embedding_used,
+        }
+
+
 def enable_prefix(lang_model: str):
     '''
     '''
@@ -430,6 +459,7 @@ def stop_command():
     Halts the chat.
     '''
     return False
+
 
 
 def technomancer_response(chat_history, lang_model, embed_model,

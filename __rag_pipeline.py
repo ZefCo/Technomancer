@@ -345,35 +345,46 @@ def find_chunk(hr_collection: str, ids: str, request: gr.Request):
     # "text_length": len(text),
     # "has_images_only": chunk_metadata.get("is_sparse", False) and chunk_metadata.get("has_images", False),
 
-    # logger.critical(f"{local_chunk['metadatas'][0]}")
+    logger.critical(f"{local_chunk['metadatas'][0]}")
 
+    angled_score: float = local_chunk["metadatas"][0].get("angled_ratio", "?")
+    auto_tags: list[str] = local_chunk["metadatas"][0].get("auto_tags", [])
+    ave_word_score: float = local_chunk["metadatas"][0].get("ave_word_len", "?")
+    chunk_data: str = local_chunk["documents"][0]
+    chunk_tags: list[str] = local_chunk["metadatas"][0].get("tags", [])
     chunk_type: str = local_chunk["metadatas"][0].get("chunk_type", "?")
-    document_data: str = local_chunk["documents"][0]
+    doubled_score: float = local_chunk["metadatas"][0].get("doubled_ratio", "?")
     extraction_method: str = local_chunk["metadatas"][0].get("extraction_method", "?")
-    metadata_tags: list = local_chunk["metadatas"][0].get("tags", "")
-    page_source: str = str(local_chunk["metadatas"][0].get("page", "?"))
-
+    has_images_bool: bool = local_chunk["metadatas"][0].get("has_images_only", "?")
+    is_sparse_bool: bool = local_chunk["metadatas"][0].get("is_sparse", "?")
+    page: int = local_chunk["metadatas"][0].get("page", "?")
+    quality_pass: bool = local_chunk["metadatas"][0].get("quality_pass", "?")
     quality_score: float = local_chunk["metadatas"][0].get("quality_score", "?")
-    angled_score = local_chunk["metadatas"][0].get("angled_ratio", "?")
-    doubled_score = local_chunk["metadatas"][0].get("doubled_ratio", "?")
-    ave_word_score = local_chunk["metadatas"][0].get("ave_word_len", "?")
-    word_len_score = local_chunk["metadatas"][0].get("word_len_suspicious", "?")
-    text_length = local_chunk["metadatas"][0].get("text_length", "?")
-    has_images_bool = local_chunk["metadatas"][0].get("has_images_only", "?")
+    source_string: str = local_chunk["metadatas"][0].get("source", "?")
+    text_density_score: float = local_chunk["metadatas"][0].get("text_density", "?")
+    text_len_score: int = local_chunk["metadatas"][0].get("text_length", "?")
+    word_count_score: int = local_chunk["metadatas"][0].get("word_count", "?")
+    word_len_score: bool = local_chunk["metadatas"][0].get("word_len_suspicious", "?")
 
     return (
-        gr.TextArea(value = document_data), 
-        gr.Dropdown(value = metadata_tags), 
-        gr.Textbox(value = page_source), 
-        gr.Textbox(value = str(quality_score)), 
-        gr.Textbox(value = chunk_type), 
+        gr.Number(value = angled_score),
+        gr.Dropdown(value = auto_tags),
+        gr.Number(value = ave_word_score),
+        gr.TextArea(value = chunk_data),
+        gr.Dropdown(value = chunk_tags),
+        gr.Textbox(value = chunk_type),
+        gr.Number(value = doubled_score),
         gr.Textbox(value = extraction_method),
-        gr.Textbox(value = str(angled_score)),
-        gr.Textbox(value = str(doubled_score)),
-        gr.Textbox(value = str(ave_word_score)),
-        gr.Textbox(value = str(word_len_score)),
-        gr.Textbox(value = str(text_length)),
-        gr.Textbox(value = str(has_images_bool))
+        gr.Textbox(value = str(has_images_bool)),
+        gr.Textbox(value = str(is_sparse_bool)),
+        gr.Number(value = page),
+        gr.Textbox(value = str(quality_pass)),
+        gr.Number(value = quality_score),
+        gr.Textbox(value = source_string),
+        gr.Number(value = text_density_score),
+        gr.Number(value = text_len_score),
+        gr.Number(value = word_count_score),
+        gr.Textbox(value = str(word_len_score))
         )
 
 
@@ -416,7 +427,7 @@ def find_document(document: str, hr_collection: str, request: gr.Request):
     '''
     Returns the number of chunks related to the documented selected. This outputs to the log.
     '''
-    from random import randint
+    # from random import randint
     set_current_user(request.username)
 
     # ascii_collection = _clean_collection(hr_collection)
@@ -425,7 +436,7 @@ def find_document(document: str, hr_collection: str, request: gr.Request):
     local_collection = _get_local_collection(hr_collection)
     local_chunks = local_collection.get(where = {"Title": document})
 
-    random_chunk = randint(0, len(local_chunks["ids"]) - 1)
+    # random_chunk = randint(0, len(local_chunks["ids"]) - 1)
 
     # This will return a dictionary of ['ids', 'embeddings', 'documents', 'uris', 'included', 'data', 'metadatas']
 
@@ -1491,6 +1502,29 @@ def _score_page_quality(page, text: str) -> dict:
         "text_density": len(text) / max(page.width * page.height, 1),
         "is_sparse": len(text) < 100,
     }
+
+
+
+def update_chunk(id, metadatas: list[str], hr_collection, embed_model,
+                 text: str | None = None):
+    '''
+    Updates a *specific* document.
+
+    Still trying to figure this out
+    '''
+    metadatas: dict = {"tags": metadatas}
+    db = Chroma(client=_get_client(), embedding_function = _get_embeddings(embed_model), collection_name = _clean_collection(hr_collection))
+    local_chunk = db.get(ids = [id])
+    # print(local_chunk["documents"])  # they return an empty list?
+    # print(local_chunk["metadatas"])
+
+    if text: updated_doc = Document(page_content = text, metadata = {**local_chunk["metadatas"][0], **metadatas}, id = id)
+
+    else: updated_doc = Document(page_content = local_chunk["documents"][0], metadata = {**local_chunk["metadatas"][0], **metadatas}, id = id)
+    
+    db.update_document(document_id=id, document=updated_doc)
+    
+    logger.info(f"Document {id} updated | {hr_collection}")
 
 
 
