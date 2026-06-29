@@ -103,15 +103,20 @@ Have language and embedding model lists but global across all users             
 Fix issue with multi column PDFs                                                                          , rag   , 6/19/26, High    , 6/21/26
 Fix issue with rotate page PDFs                                                                           , rag   , 6/19/26, High    , 6/22/26*
 Add score page quality to metadata                                                                        , rag   , 6/19/26, High    , 6/23/26
-Add multimodal re-extraction/add multimodal first extraction                                              , rag   , 6/19/26, Low     , 
+Add multimodal re-extraction                                                                              , rag   , 6/19/26, Low     , 
+Add multimodal first extraction                                                                           , rag   , 6/19/26, Low     , 6/25/26
 Implement celery library for concurrent uploads                                                           , docker, 6/20/26, Medium  , 
 Create Database tab for investigating Database chunks                                                     , ui    , 6/20/26, Medium  , 6/21/26
 Create Quarantine Database for low score pages                                                            , rag   , 6/20/26, Medium  , 6/23/26
 Clean up IDs to be Rule_System:Book_Title:Page_ID:Page_Chunk_ID:All_Chunk_ID                              , rag   , 6/21/26, High    , 6/22/26
-Clean up and simplify upload and re-summarize commands to use each other                                  , rag   , 6/21/26, Low     , 
+Clean up and simplify rag pipeline as some code feels redundant                                           , git   , 6/21/26, Low     , 
 Add re-summary ability to management tab                                                                  , rag   , 6/21/26, High    , 6/21/26
 Clear database entries when a rule system is deleted                                                      , rag   , 6/21/26, Low     , 6/24/26
 Clear textbox when new rule system is selected                                                            , ui    , 6/23/26, Low     , 6/23/26
 Clear textbox when new book is selected                                                                   , ui    , 6/23/26, Low     , 6/24/26
 Clear textbox when new chunk is selected                                                                  , ui    , 6/23/26, Low     , 6/24/26
-Update Summary metadata to include chunk scores so as to avoid errors - though get does solve some of this, rag   , 6/24/26, Medium  , 
+Update Summary metadata to include chunk scores so as to avoid errors - though get does solve some of this, rag   , 6/24/26, Medium  , 6/25/26
+Establish new log levels for events beyond info | warning | critical | error                              , log   , 6/25/26, Medium  , 
+Add ability to create new users                                                                           , ui    , 6/29/26, Low     , 6/29/26
+Add ability to delete old users                                                                           , ui    , 6/29/26, Low     , 
+Add ability to change user password                                                                       , ui    , 6/29/26, Low     , 6/29/26

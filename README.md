@@ -31,26 +31,36 @@ pulls the nomic-embed-text embedding model from Ollama. You may need to replace 
 
 A list of requirements are in the requirements.txt file.
 
-Ollama: can use any local model that the user has installed. Please note you have to bring your own Ollama model and it must be running in the background. This is meant for local LLMs, and has not been tested with internet connected ones. The choice of model you bring is going to have an impact on preformance. A small LLM will take up less space and have less hardware requirements than a bigger one, but will have a much slower response time. Feel free to bring different models as this application will search to see which ones are active, and sort them as embedding models and language models, allowing you to switch between them as you see fit. But the choice of model you bring is your responsibility.
+Ollama: can use any local model that the user has installed. Please note you have to bring your own Ollama model and it must be running in the background. This is meant for local LLMs, and has not been tested with internet connected ones. The choice of model you bring is going to have an impact on performance. A small LLM will take up less space and have less hardware requirements than a bigger one, but will have a much slower response time. Feel free to bring different models as this application will search to see which ones are active, and sort them as embedding models and language models, allowing you to switch between them as you see fit. But the choice of model you bring is your responsibility.
 
-Gradio: It runs as a local server on a device, which means any web capable device can interact with it at {that devices ip}:7860. It is not currently meant to go online as copyrighted material could be in it. For initial testing and deployment it will be populated with free RPG material, but even then the database (due to its size) will probably not be uploaded. Currently this does not support any login or chat saving, but both of those are planned for the future. At least locally. Please note! This requires Gradio 6 or later. 5 will note work! Gradio has made several critical changes that mean pervious versions of Gradio will be either expecting different message structures when interacting with the LLM or keyword arguements at runtime. Failure to run Gradio 6 will result in Technomancer crashing at start up (reporting a type error) or throwing an error when sending a message to the LLM.
+Gradio: It runs as a local server on a device, which means any web capable device can interact with it at {that devices ip}:7860. It is not currently meant to go online as copyrighted material could be in it. For initial testing and deployment it will be populated with free RPG material, but even then the database (due to its size) will probably not be uploaded. Currently this does not support any login or chat saving, but both of those are planned for the future. At least locally. Please note! This requires Gradio 6 or later. 5 will note work! Gradio has made several critical changes that mean pervious versions of Gradio will be either expecting different message structures when interacting with the LLM or keyword arguments at runtime. Failure to run Gradio 6 will result in Technomancer crashing at start up (reporting a type error) or throwing an error when sending a message to the LLM.
 
 LangChain: Also need langchain-ollama, langchain-community, langchain-unstructured, pdfplumber, langchain-chroma, sentence-transformers, transformers (the last two are different things)
 
 ChromaDB:
     
-FastAPI (not implemented yet)
+## 3.3) Logins
+
+This uses a very simple login, intended for *local* users to be able to use the database at once. It does have limitations (right now there is no way to upload multiple documents from several users at once). The logins are stored in the Users.toml file, which can be changed for your needs. 
+
+They are:
+
+|User|Password|
+|-|-|
+|Technomancer|technomancer|
+|William|Gibson|
+|Gary|Gygax|
 
 # 4) USE
 
 ## 4.1) MODELS
 
-You can install any Ollama model you want, but you must install a language model and an embedding model. Multiple models can be installed, and you can switch between them. If you are familiar with how to make new models, you can also design your own. A model file title Modelfile_Technomancer is provided for creating a Technomancer personality for the chatbot, otherwise it will use whatever language model provided. No system content prompt is used, which allows for more flexibility with language model personalities. For embedding models, size does have an effect on preformance. Qwen 8b provides more nuance to retrival, but is slower, while Qwen 4b provides less nuance (and may come back with false positives) but is much faster. Overall, play with several different models until you find something you feel works well. The choice of language model matters greatly in the quality of responses you will recieve. Llama3.1:8b, for example, gives very matter of fact responses and tries to stick to the documents provided, while some others stray and begin to make up responses.
+You can install any Ollama model you want, but you must install a language model and an embedding model. Multiple models can be installed, and you can switch between them. If you are familiar with how to make new models, you can also design your own. A model file title Modelfile_Technomancer is provided for creating a Technomancer personality for the chatbot, otherwise it will use whatever language model provided. No system content prompt is used, which allows for more flexibility with language model personalities. For embedding models, size does have an effect on performance. Qwen 8b provides more nuance to retrieval, but is slower, while Qwen 4b provides less nuance (and may come back with false positives) but is much faster. Overall, play with several different models until you find something you feel works well. The choice of language model matters greatly in the quality of responses you will receive. Llama3.1:8b, for example, gives very matter of fact responses and tries to stick to the documents provided, while some others stray and begin to make up responses.
 
-Note: there is a settings folder title EmbeddingModels.yaml that allows for the identification of embedding models (and by extension language models): this list is probably not comprehensive, and so if the embedding model you pick is not there, please add it. Additionally, while you can change your embedding model on the fly, be aware of what model you are using! Because models have different vertor representations, pulling information that one was embedded from one model will not translate well with another. It is recomended to have only one embedding model installed.
+Note: there is a settings folder title EmbeddingModels.yaml that allows for the identification of embedding models (and by extension language models): this list is probably not comprehensive, and so if the embedding model you pick is not there, please add it. Additionally, while you can change your embedding model on the fly, be aware of what model you are using! Because models have different vector representations, pulling information that one was embedded from one model will not translate well with another. It is recommended to have only one embedding model installed.
 
 (The following is not yet implemented)
-For advanced users, it is possible to user different databases and to switch embedding models for those different databases. However, only one embedding model maybe be used for a database (a database cannot suppoed multiple embedding models). When in doubt however, pick a single embedding model for all databases. 
+For advanced users, it is possible to user different databases and to switch embedding models for those different databases. However, only one embedding model maybe be used for a database (a database cannot supposed multiple embedding models). When in doubt however, pick a single embedding model for all databases. 
 
 ## 4.2) WEB UI
 
@@ -66,7 +76,7 @@ Can it be used as such? I guess so. It's using an LLM to interact with several o
 
 This is meant to quickly retrieve and interact with various documents, allowing easy access to rules and tables in an RPG book. RPG books have a variable amount of rules, some have lots (crunchy), some don't (rules-lite). Also they have lots of tables, which store rules, modifiers, random generators, etc. Instead of just having to use post it notes, an index, or just waste a lot of time thumbing through to find what you're looking for, this provides a very quick and easy way to grab the specific rule or table you are looking for.
 
-Loading documents is fairly easy: got to the Database of Holding, and drag and drop a file to the upload space. Depending on file size, the upload will take some time to complete. The documents are chunked, which can be adjusted via a slider (along with the chunk overlap), and will be uploaded in chunks (which can also be adjusted via a slider). The time it takes up upload a document is based on computer preformance, and due to the size of many pdfs, this can take awhile. The model also effects this heavily. Note: increasing batch size too much can actually slow things down even further. 
+Loading documents is fairly easy: got to the Database of Holding, and drag and drop a file to the upload space. Depending on file size, the upload will take some time to complete. The documents are chunked, which can be adjusted via a slider (along with the chunk overlap), and will be uploaded in chunks (which can also be adjusted via a slider). The time it takes up upload a document is based on computer performance, and due to the size of many PDFs, this can take awhile. The model also effects this heavily. Note: increasing batch size too much can actually slow things down even further. 
 
 Can you upload multiple documents at once? No. Will that be implemented in the future? Also no. Should it be? Again, due ot the size of the documents, uploading can take a long while, so mass uploading is not of interest here.
 
@@ -82,6 +92,6 @@ For the chunk overlap, 10-20% of the chunk size is great.
 
 # 5) NOTE ON COLLECTIONS
 
-Normally there are rules about how the named collections can be formated. To deal with this, all named collections are turned into an ascii string, which should preserve the original rule book system name. For this reason, the collection name for rule books should be limited to a maximum length of 120 characters. Normally it is allowed to be 3 to 512 characters for a ChromaDB collection, however, since they are being turned into an ascii representation of 2-3 numbers which are then spaced by an underscore, this really limits it to 512/4 = 128. In practice it should be limited to 120, just in case an ascii representation is greater than 4.
+Normally there are rules about how the named collections can be formatted. To deal with this, all named collections are turned into an ascii string, which should preserve the original rule book system name. For this reason, the collection name for rule books should be limited to a maximum length of 120 characters. Normally it is allowed to be 3 to 512 characters for a ChromaDB collection, however, since they are being turned into an ascii representation of 2-3 numbers which are then spaced by an underscore, this really limits it to 512/4 = 128. In practice it should be limited to 120, just in case an ascii representation is greater than 4.
 
 As of 5/28/26, to use the RAG pipeline, the collection must be selected directly. This allows the user to select either a specific collection or general chat. The downside is that this requires more manual input then desired.

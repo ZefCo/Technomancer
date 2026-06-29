@@ -406,7 +406,7 @@ def sort_models(embedding_models, vision_models, ollama_port):
     
     language: list = []
     embedding: list = []
-    vision: list = []
+    vision: list = ["NONE"]  # in case someone doesn't want to use the vision model at all.
     try:
         models: list[dict] = find_models(ollama_port)
     except FileNotFoundError as e:
@@ -511,6 +511,21 @@ def update_drop_down(choices: list, request: gr.Request,
     else:
         # logger.info(f"Updating drop down | []") 
         return gr.Dropdown(choices = None)
+    
+
+def update_login(user: str, password: str, request: gr.Request):
+    '''
+    Updates the user or creates a new one.
+    '''
+    users: dict = user_logins(return_dict=True)
+    update_users = {"users": {user: password}}
+    updated_users = {"users": users["users"] | update_users["users"]}
+    with open(cwd / "Settings" / "Users.toml", "w") as file:
+        toml.dump(updated_users, file)
+
+    return gr.Textbox(value = user), gr.Textbox(value = "")
+
+    
 
 
 def update_number(value):
@@ -569,16 +584,18 @@ def user_submit(user_msg, chat_history, request: gr.Request,
     return "", chat_history
 
 
-def user_logins():
+def user_logins(return_dict: bool = False) -> list | dict:
     '''
     This is not the ideal way to do this, but this is also meant as a simple project for just a few people.
     '''
-    with open(cwd / "Settings" / "Users_temp.toml", "r") as file:
-        loggins = toml.load(file)
+    with open(cwd / "Settings" / "Users.toml", "r") as file:
+        logins: dict = toml.load(file)
 
-    user_loggins: dict = [(user, loggin) for user, loggin in loggins["users"].items()]
+    if return_dict: users: dict = logins
 
-    return user_loggins
+    else: users: list = [(user, login) for user, login in logins["users"].items()]
+
+    return users
 
 # if __name__ in "__main__":
 #     setup_logs(pathlib.Path(basename(__file__)).stem)
