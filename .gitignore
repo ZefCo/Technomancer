@@ -39,8 +39,8 @@ UI_Testing/__pycache__
 # I'm testing the use of .env files over .yaml files. I don't want to push the .env files yet.
 *.env
 
-# This data doesn't need to be stored. Ever.
-Users.toml
-
 # Because it's growing so much, I'm removing test.ipynb from the commit
 Cold_Storage/__test.ipynb
+
+# This is going to be large experimental folder, starting with how to change PDFs into PNGs.
+Experimental/

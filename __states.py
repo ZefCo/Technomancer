@@ -23,7 +23,7 @@ except Exception as e:
         logger.critical(f"Entering DEBUG mode | Generating dummy rules")
         RULE_SYSTEMS = ["Dummy Rules 1", "Dummy Rule 2", "Dummy Rules 3"]
     else:
-        raise e
+        raise
 # DBOH = load_paths()
 # TAGS = load_tags()
 # IMAGES = import_setting(cwd / "Settings" / "AvatarImages.yaml")
@@ -36,7 +36,7 @@ DBOH_SETTINGS = SETTINGS["database"]
 # # LANG_MODELS, EMBED_MODELS = sort_models()
 
 try:
-    LANG_MODELS, EMBED_MODELS = sort_models(tuple(SETTINGS["embedd_models"]["models"]), SETTINGS["ports"]["ollama"])
+    LANG_MODELS, EMBED_MODELS, VISION_MODELS = sort_models(tuple(SETTINGS["embedd_models"]["models"]), tuple(SETTINGS["multimodal"]["models"]), SETTINGS["ports"]["ollama"])
 except Exception as e:
     import sys
     print(f"Error type {type(e)} | Check if Ollama is installed and running")
@@ -44,11 +44,13 @@ except Exception as e:
         logger.critical(f"Error type {type(e)} | Check if Ollama is installed and running | Creating dummy lists")
         LANG_MODELS = ["Dummy Language 1", "Dummy Language 2", "Dummy Language 3"]
         EMBED_MODELS = ["Dummy Embed 1", "Dummy Embed 2", "Dummy Embed 3"]
+        VISION_MODELS = ["Dummy Vision 1", "Dummy Vision 2", "Dummy Vision 3"]
     else:
-        raise e
+        raise
 else:
     if len(LANG_MODELS) < 1: LANG_MODELS = ["Dummy Language 1", "Dummy Language 2", "Dummy Language 3"]
     if len(EMBED_MODELS) < 1: EMBED_MODELS = ["Dummy Embed 1", "Dummy Embed 2", "Dummy Embed 3"]
+    if len(VISION_MODELS) < 1: VISION_MODELS = ["Dummy Vision 1", "Dummy Vision 2", "Dummy Vision 3"]
 
 # <-- Global States -->
 
@@ -65,6 +67,8 @@ rule_systems_list_state: list = gr.State(value = RULE_SYSTEMS)
 
 tags_list_state: list = gr.State(value = TAGS)
 
+vision_models_list_state: list = gr.State(value = VISION_MODELS)
+
 # <-- these ones don't really matter -->
 name_chunkbatch_state: str = gr.State(value = "Chunk Batch")
 name_chunksize_state: str = gr.State(value = "Chunk Size")
@@ -76,6 +80,7 @@ name_lang_state: str = gr.State(value = "Language Model")
 name_rule_state: str = gr.State(value = "Rule System")
 name_tags_state: str = gr.State(value = "Metadata Tags")
 name_threshold_state: str = gr.State(value = "Cosine Similarity Threshold")
+name_vis_state: str = gr.State(value = "Vision Model")
 true_state: bool = gr.State(value = True)
 false_state: bool = gr.State(value = False)
 
@@ -121,4 +126,6 @@ threshold_state: float = gr.State(value = DBOH_SETTINGS["threshold_state"])
 
 # What is the current upload status.
 upload_status_state: str = gr.State(value = "")
+
+vision_model_state: str = gr.State(value = VISION_MODELS[0])
 

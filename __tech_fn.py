@@ -150,6 +150,35 @@ def chunking_type(chunking_options, request: gr.Request):
         return False, False, gr.CheckboxGroup(info = "Warning: Nothing has been selected to be saved")
 
 
+
+def collect_metadata(
+        extraction_method: str, 
+        quality_score: float, 
+        page: int, 
+        text_length: int,
+        is_sparse: bool,
+        word_len_suspicious: bool, 
+        angled_ratio: float,
+        embedding_used: str
+        ):
+    '''
+    Collects and reorganizes the metadata. Things might get lost, like authors or publishers, but 
+    I'm going to try to avoid that, and also minimize it by only loosing things that are not important.
+
+    'id': 'Delta Green:Delta Green Agents Handbook:chunk:2:0', 'tags': ['Delta Green'], 'quality_pass': True, 'auto_tags': ['Delta Green'], 'ave_word_len': 5.75, 'Title': 'Delta Green Agents Handbook', 'text_density': 0.00519492308707995, 'doubled_ratio': 0.03125, 'chunk_type': 'text', 'has_images': True, 'has_images_only': False, 'word_count': 76, 'game_system': 'Delta Green', 'source': 'C:\\Users\\tokyo\\AppData\\Local\\Temp\\gradio\\8a0fe9aaf7c379f018c92555e559d27eb9b37be1fd3a9d7c7e251b8099551b58\\Delta Green Agents Handbook.pdf'}
+    '''
+    return {
+        "extraction_method": extraction_method,
+        'quality_score': quality_score, 
+        "page": page,
+        "text_length": text_length,
+        "is_sparse": is_sparse,
+        "word_len_suspicious": word_len_suspicious,
+        "angled_ratio": angled_ratio,
+        "embedding_used": embedding_used,
+        }
+
+
 def enable_prefix(lang_model: str):
     '''
     '''
@@ -209,25 +238,26 @@ def find_models(ollama_port):
     try:
         response = requests.get(f'http://ollama:{ollama_port}/api/tags')
     except CE as e:
+        logger.critical(f"Failure to get ollama host, switching to localhost")
 
         try:
             response = requests.get(f"http://localhost:{ollama_port}/api/tags")
         except CE as e:
             logger.critical(f"Ollama is not running | Failed both docker and localhost connection request")
-            raise FileNotFoundError
+            raise 
         except Exception as e:
             logger.critical(f"Error when trying to connect to Ollama localhost | {type(e)} | {e}")
-            raise FileNotFoundError
+            raise 
 
     except Exception as e:
         logger.critical(f"Ollama client response failed | {type(e)} | {e}")
-        raise FileNotFoundError
+        raise 
     
     try:
         model_list = response.json().get('models', [])
     except Exception as e:
         logger.critical(f"Ollama model list failed | {type(e)} | {e} | {type(response)} | {response}")
-        raise type(e)
+        raise
     
     return model_list
 
@@ -363,7 +393,7 @@ def list_length(lst):
 #     return tags["tags"]
 
 
-def sort_models(embedding_models, ollama_port):
+def sort_models(embedding_models, vision_models, ollama_port):
     '''
     Sorts them between embedding and language models. There is a (non comprehensive) list of embedding models, and if one of them is found it is tagged as an
     embedding mode. Again, this is non comprehensive, so that list may need to be adjusted on a per user basis.
@@ -376,6 +406,7 @@ def sort_models(embedding_models, ollama_port):
     
     language: list = []
     embedding: list = []
+    vision: list = ["NONE"]  # in case someone doesn't want to use the vision model at all.
     try:
         models: list[dict] = find_models(ollama_port)
     except FileNotFoundError as e:
@@ -383,35 +414,44 @@ def sort_models(embedding_models, ollama_port):
         raise FileNotFoundError
     except Exception as e:
         logger.critical(f"New error | {type(e)} | {e}")
-        print(e)
-        raise type(e)
+        raise
     
     # logger.warning(f"Models pulled | {models}")
 
     for model in models:
-        for em in embedding_models:
-            if re.search(em, model["name"]): 
-                embedding.append(model["name"])
-                break
+        if any(em in model["name"] for em in embedding_models): embedding.append(model["name"])
         else: language.append(model["name"])
 
-    logger.info(f"{language} | {embedding}")
+        if any(vi in model["name"] for vi in vision_models): vision.append(model["name"])  # it can be a vision AND a language model... I think
 
-    # if len(language) < 1: 
-    if language is None:
+        # for em in embedding_models:  # why not do a if model["name"] in tuple(embedding_models)? Because the names in Ollama have extra things, like the version or :latest, and that causes the search to fail.
+        #     if re.search(em, model["name"]): 
+        #         embedding.append(model["name"])  
+        #         break
+
+
+    logger.info(f"{language} | {embedding} | {vision}")
+
+    # if language is None:
+    if len(language) < 1: 
         logger.critical(f"No Language models identified | {models}")
         print("No Language models found, check logs and system for models")
     else: 
         logger.info(f"Language models found | {language}")
     
-    # if len(embedding) < 1:
-    if embedding is None: 
+    # if embedding is None: 
+    if len(embedding) < 1:
         logger.critical(f"No Embedding models identified | {models}")
         print("No Embedding models found, check logs and system for models")
     else: 
         logger.info(f"Embedding models found | {embedding}")
 
-    return language, embedding
+    if len(vision) < 1:
+        logger.warning(f"No Vision models identified | {vision}")
+    else:
+        logger.info(f"Vision models found | {vision}")
+
+    return language, embedding, vision
 
 
 def stop_command():
@@ -419,6 +459,7 @@ def stop_command():
     Halts the chat.
     '''
     return False
+
 
 
 def technomancer_response(chat_history, lang_model, embed_model,
@@ -469,7 +510,22 @@ def update_drop_down(choices: list, request: gr.Request,
         return gr.Dropdown(choices = choices)
     else:
         # logger.info(f"Updating drop down | []") 
-        return gr.Dropdown(choices = [])
+        return gr.Dropdown(choices = None)
+    
+
+def update_login(user: str, password: str, request: gr.Request):
+    '''
+    Updates the user or creates a new one.
+    '''
+    users: dict = user_logins(return_dict=True)
+    update_users = {"users": {user: password}}
+    updated_users = {"users": users["users"] | update_users["users"]}
+    with open(cwd / "Settings" / "Users.toml", "w") as file:
+        toml.dump(updated_users, file)
+
+    return gr.Textbox(value = user), gr.Textbox(value = "")
+
+    
 
 
 def update_number(value):
@@ -498,6 +554,11 @@ def update_system_prompt(new_prompt, current):
     return current, current, ""
 
 
+def update_textarea(message):
+    '''
+    '''
+    return gr.TextArea(value = message)
+
 def update_textbox(message):
     '''
     Updates the textbox.
@@ -523,16 +584,18 @@ def user_submit(user_msg, chat_history, request: gr.Request,
     return "", chat_history
 
 
-def user_logins():
+def user_logins(return_dict: bool = False) -> list | dict:
     '''
     This is not the ideal way to do this, but this is also meant as a simple project for just a few people.
     '''
-    with open(cwd / "Settings" / "Users_temp.toml", "r") as file:
-        loggins = toml.load(file)
+    with open(cwd / "Settings" / "Users.toml", "r") as file:
+        logins: dict = toml.load(file)
 
-    user_loggins: dict = [(user, loggin) for user, loggin in loggins["users"].items()]
+    if return_dict: users: dict = logins
 
-    return user_loggins
+    else: users: list = [(user, login) for user, login in logins["users"].items()]
+
+    return users
 
 # if __name__ in "__main__":
 #     setup_logs(pathlib.Path(basename(__file__)).stem)

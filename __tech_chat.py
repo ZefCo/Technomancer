@@ -57,8 +57,11 @@ def create_chat():
                     stop_btn = gr.Button(value = "Stop")
 
         with gr.Row(equal_height = True):
-            lang_textbox = gr.Textbox(label = "Langage Model Being Used", value = "", scale = 10)
-            embed_textbox = gr.Textbox(label = "Embedding Model Being Used", value = "", scale = 10)
+            lang_model_choice_dd = gr.Dropdown(label = "Available language models", choices = [], interactive = True)
+            embedding_choice_dd = gr.Dropdown(label = "Embedding Model Choices", choices = [], interactive = True)
+
+            # lang_textbox = gr.Textbox(label = "Langage Model Being Used", value = "", scale = 10)
+            # embed_textbox = gr.Textbox(label = "Embedding Model Being Used", value = "", scale = 10)
             with gr.Column():
                 prefix_check = gr.Checkbox(label = "Use Prefix", visible = False, scale = 1, interactive = True)
                 prefix_box = gr.Textbox(value = "Allows for Prefixes to be used on query - not yet turned on", visible=False)
@@ -81,10 +84,10 @@ def create_chat():
 
             with gr.Accordion(label = "Model & Query Choices", open = False) as adv_feat_acc:
                 gr.Markdown("Note, changing this mid conversation might cause confusion/hallucinations within the chatbot.")
-                with gr.Column(variant = "panel"):
-                    with gr.Row():
-                        lang_model_choice_dd = gr.Dropdown(label = "Available language models", choices = [], info = "This may report both Language models and Embedding models: please know which one is which when selecting here! You want the Language model.", interactive = True)
-                        embedding_choice_dd = gr.Dropdown(label = "Embedding Model Choices", choices = [], interactive = True)
+                # with gr.Column(variant = "panel"):
+                    # with gr.Row():
+                    #     lang_model_choice_dd = gr.Dropdown(label = "Available language models", choices = [], info = "This may report both Language models and Embedding models: please know which one is which when selecting here! You want the Language model.", interactive = True)
+                    #     embedding_choice_dd = gr.Dropdown(label = "Embedding Model Choices", choices = [], interactive = True)
                 
                 # database_choice_dd = gr.Dropdown(info = "Once fully implemented, this will tell the user what databases are available.", label = "Choices of Database", choices = [], interactive = False)
 
@@ -94,28 +97,58 @@ def create_chat():
                         threshold = gr.Slider(label="Cosine Similarity Threshold", minimum=0, maximum=2, step=0.001, scale = 10, info="0 -> totally similar, 2 -> complete opposite")
                 # # update_khold = gr.Button(value = "Update K and Threshold", scale = 3)
 
-        rule_systems_dd.select(fn = find_documents, inputs = [rule_systems_dd], outputs = [documents_list_state]).then(fn = update_drop_down, inputs = [documents_list_state], outputs = [available_documents_dd]).then(fn = list_length, inputs = [documents_list_state], outputs = [available_documents_textbox])
-        available_documents_dd.select(fn = find_document, inputs = [available_documents_dd, rule_systems_dd])
+        rule_systems_dd.select(
+                   fn = find_documents, inputs = [rule_systems_dd], outputs = [documents_list_state]
+            ).then(fn = update_drop_down, inputs = [documents_list_state], outputs = [available_documents_dd]
+            ).then(fn = list_length, inputs = [documents_list_state], outputs = [available_documents_textbox]
+            )
         
-        chat_response = msg_box.submit(user_submit, [msg_box, chatbot], [msg_box, chatbot], queue = False).then(fn = technomancer_response, inputs = [chatbot, lang_model_choice_dd, embedding_choice_dd, rule_systems_dd, metadata_tags_dd, k_state, threshold_state], outputs = [chatbot])
+        available_documents_dd.select(
+                   fn = find_document, inputs = [available_documents_dd, rule_systems_dd]
+            )
         
-        embedding_choice_dd.select(fn = change_state, inputs = [embedding_choice_dd, embed_model_state, true_state, name_embed_state], outputs = [embed_model_state]).then(fn = update_textbox, inputs = [embed_model_state], outputs = [embed_textbox]).then(fn = enable_prefix, inputs = [embed_model_state], outputs = [prefix_check, prefix_box])
+        chat_response = msg_box.submit(
+                   fn = user_submit, inputs = [msg_box, chatbot], outputs = [msg_box, chatbot], queue = False
+            ).then(fn = technomancer_response, inputs = [chatbot, lang_model_choice_dd, embedding_choice_dd, rule_systems_dd, metadata_tags_dd, k_state, threshold_state], outputs = [chatbot]
+            )
+        
+        embedding_choice_dd.select(
+                   fn = change_state, inputs = [embedding_choice_dd, embed_model_state, true_state, name_embed_state], outputs = [embed_model_state]
+            ).then(fn = enable_prefix, inputs = [embed_model_state], outputs = [prefix_check, prefix_box]
+            )
 
-        k_num.change(fn = change_state, inputs = [k_num, k_state, true_state, name_k_state], outputs = [k_state])
+        k_num.change(
+                   fn = change_state, inputs = [k_num, k_state, true_state, name_k_state], outputs = [k_state]
+            )
 
-        lang_model_choice_dd.select(fn = change_state, inputs = [lang_model_choice_dd, lang_model_state, true_state, name_lang_state], outputs = [lang_model_state]).then(fn = update_textbox, inputs = [lang_model_state], outputs = [lang_textbox])
+        lang_model_choice_dd.select(
+                   fn = change_state, inputs = [lang_model_choice_dd, lang_model_state, true_state, name_lang_state], outputs = [lang_model_state]
+            )
 
-        prefix_check.select(fn = toggle_state, inputs = [prefix_state], outputs = [prefix_state])
+        prefix_check.select(
+                   fn = toggle_state, inputs = [prefix_state], outputs = [prefix_state]
+            )
 
-        refresh_rules_btn.click(fn = find_collections, outputs = [rule_systems_list_state]).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [rule_systems_dd])
+        refresh_rules_btn.click(
+                   fn = find_collections, outputs = [rule_systems_list_state]
+            ).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [rule_systems_dd])
 
-        stop_btn.click(fn = None, inputs = None, outputs = None, cancels = [chat_response])
+        stop_btn.click(
+                   fn = None, inputs = None, outputs = None, cancels = [chat_response]
+            )
 
-        threshold.change(fn = change_state, inputs = [threshold, threshold_state, true_state, name_threshold_state], outputs = [threshold_state])
+        threshold.change(
+                   fn = change_state, inputs = [threshold, threshold_state, true_state, name_threshold_state], outputs = [threshold_state]
+            )
 
-    return chat, {"embed_models_dd": embedding_choice_dd, "embed_textbox": embed_textbox, "k": k_num, "lang_models_dd": lang_model_choice_dd, "lang_textbox": lang_textbox, "metadata_tags_dd": metadata_tags_dd, "rule_systems_dd": rule_systems_dd, "threshold": threshold}
-    # return chat, {"embed_models_dd": embedding_choice_dd, "embed_textbox": embed_textbox, "lang_models_dd": lang_model_choice_dd, "lang_textbox": lang_textbox, "metadata_tags_dd": metadata_tags_dd, "rule_systems_dd": rule_systems_dd, "threshold": threshold}
-    # return chat, {"embed_models_dd": embedding_choice_dd, "embed_textbox": embed_textbox, "lang_models_dd": lang_model_choice_dd, "lang_textbox": lang_textbox, "metadata_tags_dd": metadata_tags_dd, "rule_systems_dd": rule_systems_dd}
+    return chat, {
+        "embed_models_dd": embedding_choice_dd, 
+        "k": k_num, 
+        "lang_models_dd": lang_model_choice_dd, 
+        "metadata_tags_dd": metadata_tags_dd, 
+        "rule_systems_dd": rule_systems_dd, 
+        "threshold": threshold
+        }
 
 
 if __name__ in "__main__":

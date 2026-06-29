@@ -1,111 +1,122 @@
-Task                                                                                              , Branch, Start  , Priority, Finish
-Create RAG pipeline                                                                               , rag   , 5/20/26, High    , 5/28/26
-Be able to read PDFs via LangChain                                                                , rag   , 5/20/26, High    , 5/20/26
-Be able to read txt files into LangChain                                                          , rag   , 5/20/26, High    , 5/28/26
-Be able to ingest PDFs to ChromaDB                                                                , rag   , 5/20/26, High    , 5/21/26
-Be able to ingest txt files into ChromaDB                                                         , rag   , 5/20/26, High    , 5/28/26
-Be able to read tables properly                                                                   , rag   , 5/20/26, Medium  , 
-Save chat history to ChromaDB                                                                     , rag   , 5/20/26, Medium  , 
-Be able to reload chat history                                                                    , rag   , 5/20/26, Medium  , 
-Adjust chunks and overlap to read documents properly                                              , rag   , 5/20/26, Low     , 5/29/26
-Be able to have ollama interact with PDFs (notebook)                                              , rag   , 5/21/26, Medium  , 5/21/26
-Be able to have ollama interact with PDFs (terminal)                                              , rag   , 5/21/26, Medium  , 5/21/26
-Be able to have ollama interact with PDFs (UI)                                                    , rag   , 5/21/26, High    , 5/28/26
-Create custom UI                                                                                  , ui    , 5/20/26, Medium  , 5/22/26
-Have custom UI work with Ollama                                                                   , ui    , 5/20/26, High    , 5/26/26
-Allow for user to upload PDFs directly in UI                                                      , ui    , 5/20/26, High    , 5/27/26
-Allow user to choose llm model in UI                                                              , ui    , 5/20/26, Medium  , 5/29/26
-Allow user to upload avatar                                                                       , ui    , 5/20/26, Low     , 6/1/26
-Allow users to interact it over a [local] network                                                 , ui    , 5/20/26, Low     , 5/26/26
-Create additional API                                                                             , api   , 5/20/26, Low     , 
-Dice roller                                                                                       , api   , 5/20/26, Low     , 
-NPC generator                                                                                     , api   , 5/20/26, Low     , 
-Name Generator                                                                                    , api   , 5/20/26, Low     , 
-Initiative tracker                                                                                , api   , 5/20/26, Low     , 
-Be able to modify text files after upload                                                         , rag   , 5/21/26, Low     , 
-Find ways to preserve the Model files between multiple computers                                  , git   , 5/21/26, Low     , 6/1/26
-Be able to query all collections                                                                  , rag   , 5/21/26, Medium  , 5/21/26
-Be able to query specific collections                                                             , rag   , 5/21/26, High    , 5/28/26
-Be able to add documents to additional collections                                                , rag   , 5/21/26, High    , 5/27/26
-Organize UI files and chatbot files for final deployment                                          , git   , 5/22/26, Medium  , 6/2/26
-Have Gradio point to a file                                                                       , ui    , 5/26/26, High    , 5/27/26
-Use a YAML file (or something better) for pushing and pulling settings                            , ui    , 5/27/26, High    , 5/27/26
-Add logger output for RAG pipeline                                                                , rag   , 5/26/26, High    , 6/3/26
-Replace OllamaEmbeddings as it is depreciated and will be replaced                                , rag   , 5/27/26, High    , 5/29/26
-Create Env Test file for making sure dependencies are installed                                   , git   , 5/28/26, High    , 5/28/26
-Separate settings files instead of having just one file                                           , git   , 5/28/26, Low     , 5/31/26
-Investigate best way to upload and pass settings and functions in gradio                          , ui    , 5/28/26, Medium  , 5/28/26
-Move some/most/all of the ui functions to a UI function script or into a series of classes        , ui    , 5/28/26, Medium  , 5/29/26
-Be able to get all documents loaded to database                                                   , rag   , 5/28/26, High    , 5/29/26
-Be able to get all collections in database                                                        , rag   , 5/28/26, High    , 5/29/26
-Implement global-system-browser states for passing settings                                       , ui    , 5/28/26, High    , 5/29/26
-Implement progress bar for file uploading                                                         , ui    , 5/28/26, Medium  , 6/3/26
-Clear file upload area after file uploaded                                                        , ui    , 5/28/26, Medium  , 6/3/26
-Find way to update Upload page Rule systems and textbox without adjusting accordion               , ui    , 5/29/26, Medium  , 5/30/26
-Sort embedding models and language models                                                         , ui    , 5/29/26, Medium  , 5/29/26
-Auto adjust overlap to be 10% of size automatically yet allow user to manually adjust later       , rag   , 5/29/26, Low     , 6/2/26
-Find way to better display documents in Chat bot area                                             , ui    , 5/29/26, Low     , 
-Add button for master database                                                                    , rag   , 5/29/26, Low     , 6/3/26
-Add EPub functionality to ingest pipeline                                                         , rag   , 5/29/26, Medium  , 5/30/26
-Make sure DB_of_Holding exists at runtime                                                         , rag   , 5/29/26, High    , 5/31/26
-Update Env Test to include proper links to the libraries needed                                   , git   , 5/29/26, Low     , 5/31/26
-Test docx ingestion                                                                               , rag   , 5/30/26, High    , 
-Test csv ingestion                                                                                , rag   , 5/30/26, High    , 
-test txt ingestion                                                                                , rag   , 5/30/26, High    , 
-Test EPub ingestion                                                                               , rag   , 5/30/26, High    , 6/4/26
-Add metadata tags for documents                                                                   , rag   , 5/29/26, High    , 6/5/26
-Add metadata to documents after ingestion                                                         , rag   , 5/30/26, Medium  , 6/6/26
-Change yaml to env files                                                                          , git   , 5/30/26, Low     , 
-Add advanced features to upload tab                                                               , ui    , 5/31/26, Medium  , 5/31/26
-Make paths to additional databases optional                                                       , rag   , 5/31/26, Medium  , 5/31/26
-Go through variables and declare them consistently throughout all pages                           , git   , 5/31/26, Medium  , 6/1/26
-Reject unsupported documents                                                                      , rag   , 6/1/26 , Medium  , 6/3/26
-Need to add all inputs/outputs for append stat list function calls - two are wrong                , ui    , 6/2/26 , Low     , 6/2/26
-Have log files route to specific files based on function call                                     , git   , 6/2/26 , Low     , 
-Update README.md with more complete instructions on how to install                                , git   , 6/3/26 , Medium  , 6/3/26
-Find out why documents are no longer loading to database                                          , rag   , 6/3/26 , High    , 6/3/26
-Find out why file upload section breaks after one upload                                          , ui    , 6/3/26 , High    , 6/3/26
-Adjust default states in tabs to be the first choice in dropdown                                  , ui    , 6/4/26 , Low     , 6/5/26
-Create log file/error handling if user accidentally deletes database while Technomancer is running, git   , 6/4/26 , Low     , 
-Odd issues when selecting embed model - cannot duplicate?                                         , ui    , 6/4/26 , Low     , 
-Try uploading on multiple computers                                                               , rag   , 6/4/26 , Medium  , 6/4/26
-Try uploading with different embeddings to same database                                          , rag   , 6/4/26 , High    , 6/4/26
-Try querying from database with wrong embedding                                                   , rag   , 6/4/26 , High    , 6/4/26
-Update Rule system list at both file upload and pressing enter on dd                              , ui    , 6/4/26 , High    , 6/4/26
-Share states across tabs with updates across tabs                                                 , ui    , 6/4/26 , High    , 6/4/26
-Find way to update and share rule system state across tabs                                        , ui    , 6/4/26 , Low     , 6/4/26
-Be able to query information in database                                                          , rag   , 6/3/26 , High    , 6/4/26
-Have technomancer cite sources                                                                    , rag   , 6/3/26 , Medium  , 6/6/26
-Fix rule system drop down getting the whole list and not just one system                          , ui    , 6/4/26 , Medium  , 6/5/26
-Add similarity score threshold for return query                                                   , rag   , 6/4/26 , Medium  , 6/6/26
-Check user message for rule systems and metadata during query                                     , rag   , 6/4/26 , Medium  , 6/6/26
-reimplement deletion of documents                                                                 , rag   , 6/4/26 , High    , 6/5/26
-Add user login                                                                                    , ui    , 6/4/26 , Low     , 6/15/26
-Reinitialize document list after deletion of a document                                           , ui    , 6/4/26 , Low     , 
-Create new display branch separate from master                                                    , git   , 6/4/26 , Low     , 6/15/26
-Add textbox for embedding and language models being used and update when they change              , ui    , 6/4/26 , Medium  , 6/5/26
-Add logging to file deletion to confirm file has been delete                                      , log   , 6/4/26 , High    , 6/5/26
-Fix issues with avatar of chatbot and user                                                        , ui    , 6/5/26 , Low     , 
-Display language and embedding models to user                                                     , ui    , 6/5/26 , High    , 6/5/26
-Add counter for number of documents in Management accordion                                       , ui    , 6/5/26 , Medium  , 6/5/26
-Add ability to adjust k in advanced features                                                      , ui    , 6/5/26 , Low     , 6/7/26
-Update tag list in between uses                                                                   , ui    , 6/5/26 , High    , 6/5/26
-If user adds tags to a specific document get those to the master list                             , ui    , 6/6/26 , Low     , 
-Get error for using wrong embedding to query database                                             , git   , 6/6/26 , Low     , 
-Add ability to adjust score threshold in advanced features                                        , ui    , 6/6/26 , Low     , 6/7/26
-Save k chunks and threshold in settings between uses                                              , ui    , 6/7/26 , Medium  , 6/7/26
-Live stream log file(s) into new tab                                                              , log   , 6/7/26 , High    , 6/7/26
-Prefix documents (add in ability to turn on or off)                                               , rag   , 6/7/26 , Medium  , 
-Selectively add metadata tags to documents                                                        , rag   , 6/7/26 , Medium  , 
-Adjust to Docker                                                                                  , docker, 6/18/26, High    , 6/18/26
-Have Rules and Tags lists be global across all users                                              , docker, 6/18/26, Low     , 6/18/26
-Have language and embedding model lists but global across all users                               , docker, 6/18/26, Low     , 6/18/26
-Fix issue with multi column PDFs                                                                  , rag   , 6/19/26, High    , 
-Fix issue with rotate page PDFs                                                                   , rag   , 6/19/26, High    , 
-Add score page quality to metadata                                                                , rag   , 6/19/26, High    , 
-Add multimodal re-extraction/add multimodal first extraction                                      , rag   , 6/19/26, Low     , 
-Implement celery library for concurrent uploads                                                   , docker, 6/20/26, Medium  , 
-Create Database tab for investigating Database chunks                                             , ui    , 6/20/26, Medium  , 
-Create Quarantine Database for low score pages                                                    , rag   , 6/20/26, Medium  , 
-Clean up IDs to be Rule_System:Book_Title:Page_ID:Page_Chunk_ID:All_Chunk_ID                      , rag   , 6/21/26, High    ,
-Clean up and simplify upload and re-summarize commands to use each other                          , rag   , 6/21/26, Low     ,
+Task                                                                                                      , Branch, Start  , Priority, Finish
+Create RAG pipeline                                                                                       , rag   , 5/20/26, High    , 5/28/26
+Be able to read PDFs via LangChain                                                                        , rag   , 5/20/26, High    , 5/20/26
+Be able to read txt files into LangChain                                                                  , rag   , 5/20/26, High    , 5/28/26
+Be able to ingest PDFs to ChromaDB                                                                        , rag   , 5/20/26, High    , 5/21/26
+Be able to ingest txt files into ChromaDB                                                                 , rag   , 5/20/26, High    , 5/28/26
+Be able to read tables properly                                                                           , rag   , 5/20/26, Medium  , 
+Save chat history to ChromaDB                                                                             , rag   , 5/20/26, Medium  , 
+Be able to reload chat history                                                                            , rag   , 5/20/26, Medium  , 
+Adjust chunks and overlap to read documents properly                                                      , rag   , 5/20/26, Low     , 5/29/26
+Be able to have ollama interact with PDFs (notebook)                                                      , rag   , 5/21/26, Medium  , 5/21/26
+Be able to have ollama interact with PDFs (terminal)                                                      , rag   , 5/21/26, Medium  , 5/21/26
+Be able to have ollama interact with PDFs (UI)                                                            , rag   , 5/21/26, High    , 5/28/26
+Create custom UI                                                                                          , ui    , 5/20/26, Medium  , 5/22/26
+Have custom UI work with Ollama                                                                           , ui    , 5/20/26, High    , 5/26/26
+Allow for user to upload PDFs directly in UI                                                              , ui    , 5/20/26, High    , 5/27/26
+Allow user to choose llm model in UI                                                                      , ui    , 5/20/26, Medium  , 5/29/26
+Allow user to upload avatar                                                                               , ui    , 5/20/26, Low     , 6/1/26
+Allow users to interact it over a [local] network                                                         , ui    , 5/20/26, Low     , 5/26/26
+Create additional API                                                                                     , api   , 5/20/26, Low     , 
+Dice roller                                                                                               , api   , 5/20/26, Low     , 
+NPC generator                                                                                             , api   , 5/20/26, Low     , 
+Name Generator                                                                                            , api   , 5/20/26, Low     , 
+Initiative tracker                                                                                        , api   , 5/20/26, Low     , 
+Be able to modify text files after upload                                                                 , rag   , 5/21/26, Low     , 
+Find ways to preserve the Model files between multiple computers                                          , git   , 5/21/26, Low     , 6/1/26
+Be able to query all collections                                                                          , rag   , 5/21/26, Medium  , 5/21/26
+Be able to query specific collections                                                                     , rag   , 5/21/26, High    , 5/28/26
+Be able to add documents to additional collections                                                        , rag   , 5/21/26, High    , 5/27/26
+Organize UI files and chatbot files for final deployment                                                  , git   , 5/22/26, Medium  , 6/2/26
+Have Gradio point to a file                                                                               , ui    , 5/26/26, High    , 5/27/26
+Use a YAML file (or something better) for pushing and pulling settings                                    , ui    , 5/27/26, High    , 5/27/26
+Add logger output for RAG pipeline                                                                        , rag   , 5/26/26, High    , 6/3/26
+Replace OllamaEmbeddings as it is depreciated and will be replaced                                        , rag   , 5/27/26, High    , 5/29/26
+Create Env Test file for making sure dependencies are installed                                           , git   , 5/28/26, High    , 5/28/26
+Separate settings files instead of having just one file                                                   , git   , 5/28/26, Low     , 5/31/26
+Investigate best way to upload and pass settings and functions in gradio                                  , ui    , 5/28/26, Medium  , 5/28/26
+Move some/most/all of the ui functions to a UI function script or into a series of classes                , ui    , 5/28/26, Medium  , 5/29/26
+Be able to get all documents loaded to database                                                           , rag   , 5/28/26, High    , 5/29/26
+Be able to get all collections in database                                                                , rag   , 5/28/26, High    , 5/29/26
+Implement global-system-browser states for passing settings                                               , ui    , 5/28/26, High    , 5/29/26
+Implement progress bar for file uploading                                                                 , ui    , 5/28/26, Medium  , 6/3/26
+Clear file upload area after file uploaded                                                                , ui    , 5/28/26, Medium  , 6/3/26
+Find way to update Upload page Rule systems and textbox without adjusting accordion                       , ui    , 5/29/26, Medium  , 5/30/26
+Sort embedding models and language models                                                                 , ui    , 5/29/26, Medium  , 5/29/26
+Auto adjust overlap to be 10% of size automatically yet allow user to manually adjust later               , rag   , 5/29/26, Low     , 6/2/26
+Find way to better display documents in Chat bot area                                                     , ui    , 5/29/26, Low     , 
+Add button for master database                                                                            , rag   , 5/29/26, Low     , 6/3/26
+Add EPub functionality to ingest pipeline                                                                 , rag   , 5/29/26, Medium  , 5/30/26
+Make sure DB_of_Holding exists at runtime                                                                 , rag   , 5/29/26, High    , 5/31/26
+Update Env Test to include proper links to the libraries needed                                           , git   , 5/29/26, Low     , 5/31/26
+Test docx ingestion                                                                                       , rag   , 5/30/26, High    , 
+Test csv ingestion                                                                                        , rag   , 5/30/26, High    , 
+test txt ingestion                                                                                        , rag   , 5/30/26, High    , 
+Test EPub ingestion                                                                                       , rag   , 5/30/26, High    , 6/4/26
+Add metadata tags for documents                                                                           , rag   , 5/29/26, High    , 6/5/26
+Add metadata to documents after ingestion                                                                 , rag   , 5/30/26, Medium  , 6/6/26
+Change yaml to env files                                                                                  , git   , 5/30/26, Low     , 
+Add advanced features to upload tab                                                                       , ui    , 5/31/26, Medium  , 5/31/26
+Make paths to additional databases optional                                                               , rag   , 5/31/26, Medium  , 5/31/26
+Go through variables and declare them consistently throughout all pages                                   , git   , 5/31/26, Medium  , 6/1/26
+Reject unsupported documents                                                                              , rag   , 6/1/26 , Medium  , 6/3/26
+Need to add all inputs/outputs for append stat list function calls - two are wrong                        , ui    , 6/2/26 , Low     , 6/2/26
+Have log files route to specific files based on function call                                             , git   , 6/2/26 , Low     , 6/22/26*
+Update README.md with more complete instructions on how to install                                        , git   , 6/3/26 , Medium  , 6/3/26
+Find out why documents are no longer loading to database                                                  , rag   , 6/3/26 , High    , 6/3/26
+Find out why file upload section breaks after one upload                                                  , ui    , 6/3/26 , High    , 6/3/26
+Adjust default states in tabs to be the first choice in dropdown                                          , ui    , 6/4/26 , Low     , 6/5/26
+Create log file/error handling if user accidentally deletes database while Technomancer is running        , git   , 6/4/26 , Low     , 
+Odd issues when selecting embed model - cannot duplicate?                                                 , ui    , 6/4/26 , Low     , 
+Try uploading on multiple computers                                                                       , rag   , 6/4/26 , Medium  , 6/4/26
+Try uploading with different embeddings to same database                                                  , rag   , 6/4/26 , High    , 6/4/26
+Try querying from database with wrong embedding                                                           , rag   , 6/4/26 , High    , 6/4/26
+Update Rule system list at both file upload and pressing enter on dd                                      , ui    , 6/4/26 , High    , 6/4/26
+Share states across tabs with updates across tabs                                                         , ui    , 6/4/26 , High    , 6/4/26
+Find way to update and share rule system state across tabs                                                , ui    , 6/4/26 , Low     , 6/4/26
+Be able to query information in database                                                                  , rag   , 6/3/26 , High    , 6/4/26
+Have technomancer cite sources                                                                            , rag   , 6/3/26 , Medium  , 6/6/26
+Fix rule system drop down getting the whole list and not just one system                                  , ui    , 6/4/26 , Medium  , 6/5/26
+Add similarity score threshold for return query                                                           , rag   , 6/4/26 , Medium  , 6/6/26
+Check user message for rule systems and metadata during query                                             , rag   , 6/4/26 , Medium  , 6/6/26
+reimplement deletion of documents                                                                         , rag   , 6/4/26 , High    , 6/5/26
+Add user login                                                                                            , ui    , 6/4/26 , Low     , 6/15/26
+Reinitialize document list after deletion of a document                                                   , ui    , 6/4/26 , Low     , 6/22/26
+Create new display branch separate from master                                                            , git   , 6/4/26 , Low     , 6/15/26
+Add textbox for embedding and language models being used and update when they change                      , ui    , 6/4/26 , Medium  , 6/5/26
+Add logging to file deletion to confirm file has been delete                                              , log   , 6/4/26 , High    , 6/5/26
+Fix issues with avatar of chatbot and user                                                                , ui    , 6/5/26 , Low     , 
+Display language and embedding models to user                                                             , ui    , 6/5/26 , High    , 6/5/26
+Add counter for number of documents in Management accordion                                               , ui    , 6/5/26 , Medium  , 6/5/26
+Add ability to adjust k in advanced features                                                              , ui    , 6/5/26 , Low     , 6/7/26
+Update tag list in between uses                                                                           , ui    , 6/5/26 , High    , 6/5/26
+If user adds tags to a specific document get those to the master list                                     , ui    , 6/6/26 , Low     , 
+Get error for using wrong embedding to query database                                                     , git   , 6/6/26 , Low     , 
+Add ability to adjust score threshold in advanced features                                                , ui    , 6/6/26 , Low     , 6/7/26
+Save k chunks and threshold in settings between uses                                                      , ui    , 6/7/26 , Medium  , 6/7/26
+Live stream log file(s) into new tab                                                                      , log   , 6/7/26 , High    , 6/7/26
+Prefix documents (add in ability to turn on or off)                                                       , rag   , 6/7/26 , Medium  , 
+Selectively add metadata tags to documents                                                                , rag   , 6/7/26 , Medium  , 6/21/26
+Adjust to Docker                                                                                          , docker, 6/18/26, High    , 6/18/26
+Have Rules and Tags lists be global across all users                                                      , docker, 6/18/26, Low     , 6/18/26
+Have language and embedding model lists but global across all users                                       , docker, 6/18/26, Low     , 6/18/26
+Fix issue with multi column PDFs                                                                          , rag   , 6/19/26, High    , 6/21/26
+Fix issue with rotate page PDFs                                                                           , rag   , 6/19/26, High    , 6/22/26*
+Add score page quality to metadata                                                                        , rag   , 6/19/26, High    , 6/23/26
+Add multimodal re-extraction                                                                              , rag   , 6/19/26, Low     , 
+Add multimodal first extraction                                                                           , rag   , 6/19/26, Low     , 6/25/26
+Implement celery library for concurrent uploads                                                           , docker, 6/20/26, Medium  , 
+Create Database tab for investigating Database chunks                                                     , ui    , 6/20/26, Medium  , 6/21/26
+Create Quarantine Database for low score pages                                                            , rag   , 6/20/26, Medium  , 6/23/26
+Clean up IDs to be Rule_System:Book_Title:Page_ID:Page_Chunk_ID:All_Chunk_ID                              , rag   , 6/21/26, High    , 6/22/26
+Clean up and simplify rag pipeline as some code feels redundant                                           , git   , 6/21/26, Low     , 
+Add re-summary ability to management tab                                                                  , rag   , 6/21/26, High    , 6/21/26
+Clear database entries when a rule system is deleted                                                      , rag   , 6/21/26, Low     , 6/24/26
+Clear textbox when new rule system is selected                                                            , ui    , 6/23/26, Low     , 6/23/26
+Clear textbox when new book is selected                                                                   , ui    , 6/23/26, Low     , 6/24/26
+Clear textbox when new chunk is selected                                                                  , ui    , 6/23/26, Low     , 6/24/26
+Update Summary metadata to include chunk scores so as to avoid errors - though get does solve some of this, rag   , 6/24/26, Medium  , 6/25/26
+Establish new log levels for events beyond info | warning | critical | error                              , log   , 6/25/26, Medium  , 
+Add ability to create new users                                                                           , ui    , 6/29/26, Low     , 6/29/26
+Add ability to delete old users                                                                           , ui    , 6/29/26, Low     , 
+Add ability to change user password                                                                       , ui    , 6/29/26, Low     , 6/29/26
