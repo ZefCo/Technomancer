@@ -5,11 +5,15 @@ logger = logging.getLogger(__name__)
 logger.info(f"Reading RAG Pipeline file @ (time to be implemented)")
 
 
+import base64
+
 import chromadb
 
 from functools import lru_cache
 
 import gradio as gr
+
+import io
 
 from langchain_chroma import Chroma
 
@@ -30,6 +34,9 @@ from __log_context import set_current_user
 
 import ollama
 import os
+
+import pdfplumber
+from pdfplumber.page import Page as PageClass
 
 # from __tech_fn import import_settings   # this might get me in trouble in the long run, and I may need to have an import settings function here.
 import toml
@@ -295,6 +302,37 @@ def _enrich_chunk_metadata(chunks, game_system: str, embed_model: str):
         # chunk.metadata["tags"] = fill_list(list(sorted(existing_tags)))  # ",".join(sorted(existing_tags | auto_tags))
 
     return chunks
+
+
+
+def _extract_page_multimodal(page: PageClass, vision_model: str) -> str:
+    '''
+    Uses a vision LLM to extract the text and information of a PDF that has been converted to an image.
+    This could, in theory, handle anything as the page is converted to an image and is then 'looked at' by the LLM.
+    '''
+    image_64b = _render_page_as_base64(page)
+    prompt = """Transcribe all text from this page exactly as it reads, in natural reading order.
+
+Rules:
+- For two-column layouts: transcribe the left column completely, then the right column
+- For tables: use markdown table format (| col1 | col2 |)
+- For stat blocks or character sheets: preserve the label-value structure
+- For sidebars or callout boxes: mark them with [SIDEBAR] at the start
+- For headers and footers: skip them entirely
+- Preserve section headings using ## and ### markdown
+- Do not summarize, interpret, or add anything not on the page
+- If a section is a form or character sheet with blank fields, transcribe the labels only"""
+
+    response = ollama.chat(
+        model=vision_model,
+        messages=[{
+            "role": "user",
+            "content": prompt,
+            "images": [image_64b]
+        }]
+    )
+    
+    return response["message"]["content"]
 
 
 
@@ -938,26 +976,6 @@ def _load_document(file_path, DocLoader):
     return document
 
 
-def _load_document_column_aware_alt(file_path: pathlib.Path) -> list:
-    '''
-    '''
-    import pdfplumber
-    documents = []
-    with pdfplumber.open(str(file_path)) as pdf:
-        for page in pdf.pages:
-            width, height = page.width, page.height
-
-            left_bbox = (0, 0, width / 2, height)
-            right_bbox = (width / 2, 0, width, height)
-
-            left_col = page.within_bbox(left_bbox).extract_text()
-            right_col = page.within_bbox(right_bbox).extract_text()
-
-            if left_col: documents.append(left_col)
-            if right_col: documents.append(right_col)
-
-    return documents
-
 
 def _load_document_column_aware(file_path: pathlib.Path) -> list:
     '''
@@ -965,10 +983,11 @@ def _load_document_column_aware(file_path: pathlib.Path) -> list:
 
     What this also does is score each page, which really should be done as a separate area.
     '''
-    import pdfplumber
+    # import pdfplumber
     documents = []
 
     with pdfplumber.open(str(file_path)) as pdf:
+        og_metadata = pdf.metadata
         for i, page in enumerate(pdf.pages):
             words = page.extract_words()
             if not words: continue
@@ -993,14 +1012,15 @@ def _load_document_column_aware(file_path: pathlib.Path) -> list:
             page_score = _score_page_quality(page, text)
             
             if text.strip():
-                documents.append(Document(page_content=text, metadata = {"source": str(file_path), "page": i, "extraction_method": extraction_method, **page_score}))
+                documents.append(Document(page_content=text, metadata = {**og_metadata, "source": str(file_path), "page": i, "extraction_method": extraction_method, **page_score}))
 
             # logger.info(f"Page {i}: {extraction_method} extraction | {len(text)} chars")
 
     return documents
 
 
-def load_documents(file, hr_collection, embed_model, lang_model,
+
+def load_documents(file, hr_collection, embed_model, lang_model, request: gr.Request, vision_model: str | None = None,
                    tags: list | None = None, chunk_size = 512, chunk_overlap = 50, chunk_batch = 50, chunk_sum = 10, 
                    save_chunks: bool = True, save_summary: bool = True,
                    *args, **kwargs):
@@ -1013,7 +1033,9 @@ def load_documents(file, hr_collection, embed_model, lang_model,
     if summary -> gen chunks, gen summary, save summary
     if both -> gen chunks, save chunks, gen summary, save summary
     '''
-    logger.info(f"Loading file | {file} | {hr_collection} | {embed_model} | C Size: {chunk_size} | C Overlap: {chunk_overlap}")
+    set_current_user(request.username)
+
+    logger.info(f"Loading file | {file} | {hr_collection} | Embedding Model: {embed_model} | Language Model: {lang_model} | Vision Model: {vision_model} | C Size: {chunk_size} | C Overlap: {chunk_overlap}")
     
     ascii_collection = _clean_collection(hr_collection)
     if isinstance(file, str): file = pathlib.Path(file)
@@ -1040,9 +1062,14 @@ def load_documents(file, hr_collection, embed_model, lang_model,
     
     logger.info(f"Document loader set to {DocLoader.__name__}")
 
-    try:
-       if file.suffix == ".pdf": document = _load_document_column_aware(file)
-       else: document = _load_document(file, DocLoader)
+    try: 
+        if file.suffix == ".pdf": 
+           if vision_model and vision_model != "NONE": document = _sort_pdf_pages(file, vision_model) # _load_pdf_multimodal(file, vision_model)
+           else: document = _load_document_column_aware(file)
+        else: document = _load_document(file, DocLoader)
+    except PermissionError as e:
+        logger.error(f"Failed to load document | {file} | Permission Error")
+        return f"Permission Error: Please try again"
     except Exception as e:
         logger.error(f"Failed to load document | {file} | {type(e)} | {e}")
         return f"Error loading file: {type(e)}"
@@ -1432,6 +1459,22 @@ def _query_wants_table(msg: str) -> bool:
     return any(signal in msg_lower for signal in table_signals)
 
 
+
+def _render_page_as_base64(page: PageClass, resolution: int = 300) -> str:
+    '''
+    Renders a PDF page as base64 by first turning it into a png, which then is converted to a string of base64.
+    '''
+    # with pdfplumber.open(pdf_path) as pdf:
+        # page = pdf.pages[page_num]
+    pdf_image = page.to_image(resolution = resolution)
+
+    buffer = io.BytesIO()
+    pdf_image.original.save(buffer, format="PNG")
+    buffer.seek(0)
+
+    return base64.b64encode(buffer.read()).decode()
+
+
 def _score_chunk_quality(chunk_metadata: dict, text: str) -> dict:
     '''
     Scores a chunk, which will determine if it goes into quarantine or not.
@@ -1495,13 +1538,94 @@ def _score_page_quality(page, text: str) -> dict:
     '''
     chars = page.chars
     total_chars = len(chars)
+    words = text.split()
+
+    angled_ratio = sum(1 for c in chars if abs(c.get('matrix', (0,0,0,0,0,0))[1]) >= 0.1) / max(total_chars, 1)
+    ave_word_len = (sum(len(w) for w in words) / len(words)) if words else 0
+    has_images = len(page.images) > 0
+    text_density = len(text) / max(page.width * page.height, 1)
+    is_sparse = len(text) < 100
 
     return{
-        "angled_ratio": sum(1 for c in chars if abs(c.get('matrix', (0,0,0,0,0,0))[1]) >= 0.1) / max(total_chars, 1),
-        "has_images": len(page.images) > 0,
-        "text_density": len(text) / max(page.width * page.height, 1),
-        "is_sparse": len(text) < 100,
+        "angled_ratio": angled_ratio,
+        "ave_word_len": ave_word_len,
+        "has_images": has_images,
+        "text_density": text_density,
+        "is_sparse": is_sparse,
+        "is_suspicious": ((angled_ratio > 0.2) or (ave_word_len < 2.5) or (ave_word_len > 12) or (len(text) < 100 and has_images))
     }
+
+
+def _sort_pdf_pages(file_path: pathlib.Path | str, vis_model: str) -> list:
+    '''
+    This is a handler for sorting the pdf pages to be either read with the two column approach or with the multimodal approach.
+    
+    It will first score the page, then it will sort the page based on the score. (Do the scores then need to be updated? Not sure)
+
+    Good scores go straight to the two column aware function. Bad scores go to the multimodal extraction after getting the two column treatment.
+    '''
+    documents = []
+    with pdfplumber.open(str(file_path)) as pdf:
+        og_metadata = pdf.metadata
+        total_pages = len(pdf.pages)
+
+        for p, page in enumerate(pdf.pages):
+            words = page.extract_words()
+            if not words: continue
+
+            if _two_columns(words, page.width):
+                text: str = _extract_two_column_page(page)
+                extraction_method = "two_column"
+            else:
+                text: str = page.extract_text() or ""
+                extraction_method = "standard"
+
+            page_score = _score_page_quality(page, text)
+
+            if page_score["is_suspicious"]:
+                logger.info(f"Page {p} is suspicious | Angle Ratio: {page_score['angled_ratio']} | Average Word Length: {page_score['ave_word_len']} | Has Images: {page_score['has_images']} | Text Density: {page_score['text_density']} | Is Sparse: {page_score['is_sparse']}")
+
+                try:
+                    text = _extract_page_multimodal(page, vis_model)
+                    extraction_method = f"Multimodal: {vis_model}"
+                except Exception as e:
+                    logger.error(f"Vision Extraction failed on page {p} | {(type(e))} | {e}")
+                    extraction_method = f"{extraction_method}: Multimodal Failed"
+
+            if text.strip():
+                documents.append(Document(
+                    page_content=text,
+                    metadata = {**og_metadata,
+                                "source": str(file_path),
+                                "page": p,
+                                "extraction_method": extraction_method,
+                                **page_score}))
+
+            if p % 10 == 0:
+                logger.info(f"Progress: {p} / {total_pages} pages processed")
+        
+        vision_count = sum(1 for d in documents if d.metadata.get("extraction_method") == f"Multimodal: {vis_model}")
+
+        logger.info(f"Extraction complete | Visual Extraction extraction: {vision_count} | Text extraction: {len(documents) - vision_count}")
+
+    return documents
+
+
+
+def _two_columns(words, page_width):
+    '''
+    Determines if the pdf has two columns or not.
+    '''
+    x_positions = [w['x0'] for w in words]
+    mid = page_width / 2
+
+    left_count = sum(1 for x in x_positions if x < mid * 0.85)
+    right_count = sum(1 for x in x_positions if x > mid * 1.15)
+    center_count = sum(1 for x in x_positions if mid * 0.85 <= x <= mid * 1.15)
+
+    is_two_column = (left_count > 20 and right_count > 20 and center_count < (left_count + right_count) * 1.15)
+
+    return is_two_column
 
 
 

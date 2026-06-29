@@ -80,6 +80,7 @@ name_lang_state: str = gr.State(value = "Language Model")
 name_rule_state: str = gr.State(value = "Rule System")
 name_tags_state: str = gr.State(value = "Metadata Tags")
 name_threshold_state: str = gr.State(value = "Cosine Similarity Threshold")
+name_vis_state: str = gr.State(value = "Vision Model")
 true_state: bool = gr.State(value = True)
 false_state: bool = gr.State(value = False)
 

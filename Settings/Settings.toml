@@ -22,7 +22,7 @@ models = ["minicpm-v", "minimax-m3", "kimi-k2.7-code", "minicpm-v4.6", "minicpm-
 
 [ports]
 chroma = 8000
-ollama = 11435  # 11434
+ollama = 11434  # 11435
 
 # Note these are not meant to be end-all-be-all values. The chunks get put in Quarantine DB and can be moved back into the regular DB
 [QUALITY_THRESHOLDS]

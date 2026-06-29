@@ -4,35 +4,42 @@ import logging
 
 import gradio as gr
 
-from __rag_pipeline import (create_collection, 
+from __rag_pipeline import (
+                            create_collection, 
                             delete_document, delete_collection, 
                             find_collections, find_documents,
                             get_metadata,
                             load_documents,
-                            update_metadata)
+                            update_metadata
+                            )
 
-from __states import (chunk_overlap_state, chunk_size_state, chunk_summary_state, chunk_batches_state,
+from __states import (
+                      chunk_overlap_state, chunk_size_state, chunk_summary_state, chunk_batches_state,
                       documents_list_state, 
                       embed_model_state, 
-                      k_state,
                       lang_model_state, 
-                      named_chunkoverlap_state, name_chunksize_state, name_embed_state, name_rule_state, name_lang_state, name_chunksum_state, name_chunkbatch_state,
+                      named_chunkoverlap_state, name_chunksize_state, name_embed_state, name_rule_state, name_lang_state, name_chunksum_state, name_chunkbatch_state, name_vis_state,
                       percent_state, 
                       rule_system_state, rule_systems_list_state, 
                       tags_list_state, true_state,
                       save_chunk_state, save_sum_state,
-                      upload_status_state)
+                      upload_status_state,
+                      vision_model_state, vision_models_list_state
+                      )
 
-from __tech_fn import (append_state_list, 
+from __tech_fn import (
+                       append_state_list, 
                        change_state, change_state_list, chunking_type,
                        export_tags, 
                        list_length, 
-                       update_slider, update_textbox,  update_drop_down)
+                       update_slider, update_textbox,  update_drop_down
+                       )
 
 
 def create_upload():
     '''
     '''
+    none_state = gr.State(value = None)
     
     with gr.Blocks() as upload:
         # with gr.Sidebar(position = "left", open = False) as sidebar:
@@ -64,6 +71,23 @@ def create_upload():
                 chunking_type_check = gr.CheckboxGroup(label = "Save Chunks/Summary/Both", choices = ["Chunk", "Summary", "Both"], value = "Both", interactive = True, info = "Will save both Chunks and Summary")
 
             with gr.Column(variant = "panel"):
+                gr.Markdown("## File Upload")
+
+                gr.Markdown("Supported file types: .pdf, .md")
+                with gr.Column():
+                    # with gr.Row():
+                    # with gr.Row():
+                        # with gr.Column():
+                            # embed_textbox = gr.Textbox(label = "w/ Embedding Model: (adjusted in Advanced Settings)", interactive = False, value = "")
+                    embed_models_dd = gr.Dropdown(label = "Embedding Models", info = "For how the document is vectorized", choices = [], interactive = True)
+                        # with gr.Column():
+                    lang_model_sum_dd = gr.Dropdown(label = "Language Models", info = "For generating the summary", choices = [], interactive = True)
+                    # with gr.Row():
+                    vis_model_dd = gr.Dropdown(label = "Vision Models", info = "For pages that cannot normally be ingested: NONE means no vision model is used", choices = [], interactive = True)
+                        # clear_vis_btn = gr.Button(value = "Clear Vision", scale = 1)
+                    selected_rule_system = gr.Textbox(label = "Adding under rule system (adjusted in Rule System & Tags column)", interactive = False, value = "Select Rule system")
+
+            with gr.Column(variant = "panel"):
                 gr.Markdown("## Chunks")
 
                 gr.Markdown("While this can go as high as 1,000 chunks, consider staying below 512, with overlap being about 0.10 - 0.20 of the chunk size. Chunk batches is for how many chunks will be added at a time. Due to the size of the books, there can be several thousand chunks that are needed to be loaded. The Summary Chunks is how many chunks are bundeled together to create a larger summary of information. Useful for getting large concepts of rules.")
@@ -73,23 +97,9 @@ def create_upload():
                 c_summary_slide = gr.Slider(minimum = 1, maximum = 100, value = 10, label = "Summary Chunks", interactive = True, precision = 0)
                 # embed_textbox = gr.Textbox(label = "Embedding Model Being Used", value = "")
 
-            with gr.Column(variant = "panel"):
-                gr.Markdown("## File Upload")
-
-                gr.Markdown("Supported file types: .pdf, .docx, .txt, .csv")
-                with gr.Column(variant = "compact"):
-                    with gr.Row():
-                        selected_rule_system = gr.Textbox(label = "Adding under rule system (adjusted in Rule System & Tags column)", interactive = False, value = "Select Rule system")
-                    with gr.Row():
-                        # with gr.Column():
-                            # embed_textbox = gr.Textbox(label = "w/ Embedding Model: (adjusted in Advanced Settings)", interactive = False, value = "")
-                        embed_models_dd = gr.Dropdown(label = "Embedding Models", info = "For how the document is vectorized", choices = [], interactive = True)
-                        # with gr.Column():
-                    with gr.Row():
-                        lang_model_sum_dd = gr.Dropdown(label = "Language Models", info = "For generating the summary", choices = [], interactive = True)
-                        vis_model_dd = gr.Dropdown(label = "Vision Models", info = "For pages that cannot normally be ingested", choices = [], interactive = True)
-                upload_file_space = gr.File(label = f"Drag and drop a file")
-                upload_status_box = gr.Textbox(label  = "Upload Status", interactive = False, value = "No file uploaded yet")
+        
+        upload_status_box = gr.Textbox(label  = "Upload Status", interactive = False, value = "No file uploaded yet")
+        upload_file_space = gr.File(label = f"Drag and drop a file")
 
         
         c_size_slide.change(
@@ -109,6 +119,11 @@ def create_upload():
         c_batch_slide.change(
                    fn = change_state, inputs = [c_batch_slide, chunk_batches_state, true_state, name_chunkbatch_state], outputs = [chunk_batches_state]
             )
+        
+        # clear_vis_btn.click(
+        #            fn = update_drop_down, inputs = [vision_models_list_state, none_state], outputs = [vis_model_dd]
+        #     ).then(fn = change_state, inputs = [none_state, vision_model_state, true_state, name_vis_state], outputs = [vision_model_state]
+        #     )
         
         chunking_type_check.input(
                    fn = chunking_type, inputs = [chunking_type_check], outputs = [save_chunk_state, save_sum_state, chunking_type_check]
@@ -149,7 +164,11 @@ def create_upload():
                    fn = change_state, inputs = [rule_systems_dd], outputs = [rule_system_state]
             ).then(fn = append_state_list, inputs = [rule_systems_list_state, rule_system_state], outputs = [rule_systems_list_state]
             ).then(fn = update_drop_down, inputs = [rule_systems_list_state, rule_system_state], outputs = [rule_systems_dd]
-            ).then(fn = load_documents, inputs = [upload_file_space, rule_system_state, embed_model_state, lang_model_state, metadata_tags_dd, chunk_size_state, chunk_overlap_state, chunk_batches_state, chunk_summary_state, save_chunk_state, save_sum_state], outputs = [upload_status_box]
+            ).then(fn = load_documents, inputs = [upload_file_space, rule_system_state, embed_model_state, lang_model_state, vision_model_state, metadata_tags_dd, chunk_size_state, chunk_overlap_state, chunk_batches_state, chunk_summary_state, save_chunk_state, save_sum_state], outputs = [upload_status_box]
+            )
+        
+        vis_model_dd.select(
+                    fn = change_state, inputs = [vis_model_dd, vision_model_state, true_state, name_vis_state], outputs = [vision_model_state]
             )
 
     return upload, {

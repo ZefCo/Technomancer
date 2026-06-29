@@ -30,7 +30,7 @@ try:
                           false_state, 
                           k_state,
                           lang_model_state, lang_models_list_state,
-                          name_chunksize_state, name_embed_state, name_k_state, name_lang_state, name_rule_state, named_chunkoverlap_state, name_tags_state, name_threshold_state, name_chunkbatch_state, name_chunksum_state,
+                          name_chunksize_state, name_embed_state, name_k_state, name_lang_state, name_rule_state, named_chunkoverlap_state, name_tags_state, name_threshold_state, name_chunkbatch_state, name_chunksum_state, name_vis_state,
                           percent_state, prefix_state,
                           rule_system_state, rule_systems_list_state, 
                           save_chunk_state, save_sum_state,
@@ -45,7 +45,7 @@ except Exception as e:
 
 
 import __tech_about as tech_about
-from __tech_fn import update_drop_down, update_textbox, update_slider, update_number
+from __tech_fn import update_drop_down, update_login, update_slider, update_number
 from __tech_chat import create_chat
 from __tech_upload import create_upload
 from __tech_db import create_db
@@ -63,7 +63,7 @@ def launch_technomancer():
         embed_model_state.render(), embed_models_list_state.render(), empty_list_state.render()
         k_state.render()
         lang_model_state.render(), lang_models_list_state.render()
-        name_chunkbatch_state.render(), name_chunksum_state.render(), name_chunksize_state.render(), named_chunkoverlap_state.render(), name_embed_state.render(), name_k_state.render(), name_lang_state.render(), name_rule_state.render(), name_tags_state.render(), name_threshold_state.render()
+        name_chunkbatch_state.render(), name_chunksum_state.render(), name_chunksize_state.render(), named_chunkoverlap_state.render(), name_embed_state.render(), name_k_state.render(), name_lang_state.render(), name_rule_state.render(), name_tags_state.render(), name_threshold_state.render(), name_vis_state.render()
         percent_state.render(), prefix_state.render()
         rule_system_state.render(), rule_systems_list_state.render()
         tags_list_state.render()
@@ -85,7 +85,10 @@ def launch_technomancer():
 
         with gr.Sidebar(position = "left", open = False):
             with gr.Column():
-                user_box = gr.Textbox(value = "Anonymous", label = "Username", visible = True)
+                user_box = gr.Textbox(value = "Anonymous", label = "Username", visible = True, interactive = True)
+                password_box = gr.Textbox(value = "", label = "Password", visible = True, interactive = True, type = "password")
+                userpass_btn = gr.Button(value = "Create/Update User")
+
                 logout = gr.Button("Logout", link = "/logout")
 
         Technomancer.load(fn = user_name, inputs = [true_state], outputs = [user_box])
@@ -188,6 +191,8 @@ def launch_technomancer():
             )
 
         log_tab.select()
+
+        userpass_btn.click(fn = update_login, inputs = [user_box, password_box], outputs = [user_box, password_box])
 
     return Technomancer
 
