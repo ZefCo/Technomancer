@@ -54,7 +54,7 @@ from __tech_logs import create_log
 
 def launch_technomancer():
 
-    with gr.Blocks(title = "Technomancer v1.5.1") as Technomancer:
+    with gr.Blocks(title = "Technomancer v pre1.5.1") as Technomancer:
         # This is meant to better share states
         # because of how many state variables I'm juggeling, I'm going to keep them alphabitized.
         avatars_state.render()
