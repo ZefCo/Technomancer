@@ -6,9 +6,10 @@ import gradio as gr
 
 from __rag_pipeline import (
                             create_collection, 
-                            delete_document, delete_collection, 
+                            delete_document, delete_collection, delete_chunk,
                             find_chunk, find_chunks, find_collections, find_documents,
                             generate_summary, get_metadata, 
+                            heal_chunk,
                             load_documents,
                             update_metadata, update_chunk
                             )
@@ -71,7 +72,10 @@ def create_db():
             chunk_data_area = gr.TextArea(label = "Document Data", info = "Can be edited", scale = 10, interactive = True)
             with gr.Column():
                 chunk_update_btn = gr.Button(value = "Update Text", scale = 1)
-                chunk_del_btn = gr.Button(value = "Delete Chunk*", scale = 1)
+                heal_chunk_btn = gr.Button(value = "Heal Chunk", scale = 1)
+                quar_chunk_btn = gr.Button(value = "Quarantine Chunk*", scale = 1)
+                gr.Markdown("Delete chunks Button:")
+                chunk_del_btn = gr.Button(value = "Delete Chunk", scale = 1)
         with gr.Row(variant="panel"):
             with gr.Column():
                 with gr.Row():
@@ -188,6 +192,30 @@ def create_db():
 
         chunk_update_btn.click(fn = update_chunk, inputs = [chunks_dd, chunk_tags_dd, available_rule_systems_dd, local_embedding_box, chunk_data_area])
         
+        chunk_del_btn.click(
+                   fn = delete_chunk, inputs = [chunks_dd, available_rule_systems_dd]
+            ).then(fn = find_chunks, inputs = [available_rule_systems_dd, available_documents_dd], outputs = [chunk_list_state, chunks_len_box]
+            ).then(fn = update_drop_down, inputs = [chunk_list_state], outputs = [chunks_dd]
+            ).then(fn = update_textarea, inputs = [none_state], outputs = [chunk_data_area]
+            ).then(fn = update_textbox, inputs = [none_state], outputs = [page_box]
+            ).then(fn = update_textbox, inputs = [none_state], outputs = [chunk_type_box]
+            ).then(fn = update_textbox, inputs = [none_state], outputs = [extraction_method_box]
+            ).then(fn = update_number, inputs = [none_state], outputs = [quality_score_num]
+            ).then(fn = update_number, inputs = [none_state], outputs = [angle_score_num]
+            ).then(fn = update_number, inputs = [none_state], outputs = [double_score_num]
+            ).then(fn = update_number, inputs = [none_state], outputs = [ave_word_score_num]
+            ).then(fn = update_textbox, inputs = [none_state], outputs = [word_len_score_box]
+            ).then(fn = update_number, inputs = [none_state], outputs = [text_len_score_num]
+            ).then(fn = update_textbox, inputs = [none_state], outputs = [has_images_box]
+            ).then(fn = update_textbox, inputs = [none_state], outputs = [source_box]
+            ).then(fn = update_textbox, inputs = [none_state], outputs = [quality_pass_box]
+            ).then(fn = update_number, inputs = [none_state], outputs = [text_density_num]
+            ).then(fn = update_number, inputs = [none_state], outputs = [word_count_num]
+            ).then(fn = update_textbox, inputs = [none_state], outputs = [is_sparse_box]
+            ).then(fn = update_drop_down, inputs = [none_state], outputs = [auto_tags]
+            ).then(fn = update_drop_down, inputs = [none_state], outputs = [chunk_tags_dd]
+            )
+
         del_collection_btn.click(
                    fn = delete_collection, inputs = [available_rule_systems_dd], outputs = [rule_system_state]
             ).then(fn = find_collections, outputs = [rule_systems_list_state]
@@ -250,6 +278,30 @@ def create_db():
                    fn = generate_summary, inputs = [available_rule_systems_dd, available_documents_dd, local_embedding_box, local_lang_dd, local_chunk_summary_num]
             )
 
+        heal_chunk_btn.click(
+                   fn = heal_chunk, inputs = [chunks_dd, chunk_data_area, chunk_tags_dd, available_rule_systems_dd, local_embedding_box]
+            ).then(fn = find_chunks, inputs = [available_rule_systems_dd, available_documents_dd], outputs = [chunk_list_state, chunks_len_box]
+            ).then(fn = update_drop_down, inputs = [chunk_list_state], outputs = [chunks_dd]
+            ).then(fn = update_textarea, inputs = [none_state], outputs = [chunk_data_area]
+            ).then(fn = update_textbox, inputs = [none_state], outputs = [page_box]
+            ).then(fn = update_textbox, inputs = [none_state], outputs = [chunk_type_box]
+            ).then(fn = update_textbox, inputs = [none_state], outputs = [extraction_method_box]
+            ).then(fn = update_number, inputs = [none_state], outputs = [quality_score_num]
+            ).then(fn = update_number, inputs = [none_state], outputs = [angle_score_num]
+            ).then(fn = update_number, inputs = [none_state], outputs = [double_score_num]
+            ).then(fn = update_number, inputs = [none_state], outputs = [ave_word_score_num]
+            ).then(fn = update_textbox, inputs = [none_state], outputs = [word_len_score_box]
+            ).then(fn = update_number, inputs = [none_state], outputs = [text_len_score_num]
+            ).then(fn = update_textbox, inputs = [none_state], outputs = [has_images_box]
+            ).then(fn = update_textbox, inputs = [none_state], outputs = [source_box]
+            ).then(fn = update_textbox, inputs = [none_state], outputs = [quality_pass_box]
+            ).then(fn = update_number, inputs = [none_state], outputs = [text_density_num]
+            ).then(fn = update_number, inputs = [none_state], outputs = [word_count_num]
+            ).then(fn = update_textbox, inputs = [none_state], outputs = [is_sparse_box]
+            ).then(fn = update_drop_down, inputs = [none_state], outputs = [auto_tags]
+            ).then(fn = update_drop_down, inputs = [none_state], outputs = [chunk_tags_dd]
+            )
+        
         refresh_rules_btn.click(
                    fn = find_collections, outputs = [rule_systems_list_state]
             ).then(fn = update_drop_down, inputs = [rule_systems_list_state], outputs = [available_rule_systems_dd]

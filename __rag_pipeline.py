@@ -192,6 +192,30 @@ def create_collection(hr_collection: str):
     else:
         logger.info(f"Successfully created {hr_collection} in database")
 
+
+
+def delete_chunk(id: str, hr_collection: str, request: gr.Request):
+    '''
+    Deletes a specific chunk.
+
+    I've been using the terms as follows:
+
+    Collection: a collection of documents
+    Document: a single file that is ingested
+    Chunk: a portion of that document
+
+    Chroma doesn't use chunks, as the document can be very long.
+    '''
+    set_current_user(request.username)
+    client = _get_client()
+
+    ascii_collection = _clean_collection(hr_collection)
+    logger.warning(f"Deleting chunk {id} | {hr_collection}")
+
+    local_collection = client.get_collection(name = ascii_collection)
+    local_collection.delete(ids = [id])
+
+
     
 def delete_collection(hr_collection, request: gr.Request,
                       nuclear_option: bool = False):
@@ -345,12 +369,15 @@ def find_chunk(hr_collection: str, ids: str, request: gr.Request):
     client = _get_client()
     local_collection = client.get_collection(str(ascii_collection))
 
-    local_chunk = local_collection.get(ids = [ids])
+    local_chunk: dict = local_collection.get(ids = [ids])
 
     # logger.critical(f"Local Chunk | {local_chunk} | {type(local_chunk)}")
 
     # I'm keeping this here as the project expands: things will be added or removed depending on the needs of the project
     # the local chunk is a dictionary with (* means things that will be used):
+    # It's rather confusing. It's pulling out one chunk, but returning it as a list because I *could* return multiple chunks. I don't want to though.
+    # Then there's how the data is organized. It's a series of lists, so we can pull the first index since it's only one chunk, but the data is scattered across multiple lists.
+
     # *ids -> the ids of the chunk
     # embeddings -> ?
     # metadatas -> a list with
@@ -540,11 +567,6 @@ def _format_docs(docs):
         page = doc.metadata.get("page", "?")
         formatted.append(f"[Source: {source}, Page: {page}]\n{doc.page_content}")
     return "\n\n".join(formatted)
-
-
-def _extract_page_filter_angled(page) -> str:
-    '''
-    '''
 
 
 def _extract_two_column_page(page, 
@@ -871,6 +893,37 @@ def _gradio_history_to_langchain(history: list):
     return messages
 
 
+
+def heal_chunk(id: str, text: str, tags: list[str], hrq_collection: str, embed_model: str,
+               request: gr.Request):
+    '''
+    Heals a chunk and moves it to the main database.
+
+    Creates a new document from the existing data and new data of the chunk, saves that chunk to the main collection, then deletes the quarantined data.
+    
+    This effectively overwrites the chunk and forces it into the healed area. This means you could just click "heal chunk" and it will be healed.
+    '''
+    # get original metadatas
+    hr_collection = hrq_collection.replace("_quarantine", "")  # removes the quarantine part
+    
+    db = Chroma(client = _get_client(), embedding_function=_get_embeddings(embed_model), collection_name = _clean_collection(hr_collection))
+    dbq = Chroma(client = _get_client(), embedding_function=_get_embeddings(embed_model), collection_name = _clean_collection(hrq_collection))
+    
+    local_chunk = dbq.get(ids = [id])
+
+    new_scores: dict = _score_chunk_quality(local_chunk["metadata"], text)  # returns {scores: score}
+    metadatas: dict = local_chunk["metadata"][0]
+    metadatas["tags"] = tags
+    metadatas = {**metadatas, **new_scores}
+
+    healed_doc = Document(page_content = text, metadata = metadatas, id = id)
+
+    db.add_documents(documents = [healed_doc], ids = id)
+
+    delete_chunk(id, hrq_collection, request)  # this deletes the quarantined chunk
+
+
+
 def human_collection(collection:str):
     '''
     Turns the ascii collection into a human readable form.
@@ -1009,7 +1062,7 @@ def _load_document_column_aware(file_path: pathlib.Path) -> list:
                 text: str = page.extract_text() or ""
                 extraction_method = "standard"
 
-            page_score = _score_page_quality(page, text)
+            page_score = _score_page_quality(text, page.chars, page.images, page.width, page.height)
             
             if text.strip():
                 documents.append(Document(page_content=text, metadata = {**og_metadata, "source": str(file_path), "page": i, "extraction_method": extraction_method, **page_score}))
@@ -1527,7 +1580,7 @@ def _score_chunk_quality(chunk_metadata: dict, text: str) -> dict:
 
 
 
-def _score_page_quality(page, text: str) -> dict:
+def _score_page_quality(text: str, chars, page_images, page_width, page_height) -> dict:
     '''
     Scores the page on a few different metrics:
 
@@ -1536,14 +1589,16 @@ def _score_page_quality(page, text: str) -> dict:
     What is the text density? If low then it might be the captioning of an image.
     Is it sparse? This could be related to the previous metric, or it could be a chapter title, etc.
     '''
-    chars = page.chars
+    # chars = page.chars
     total_chars = len(chars)
     words = text.split()
 
     angled_ratio = sum(1 for c in chars if abs(c.get('matrix', (0,0,0,0,0,0))[1]) >= 0.1) / max(total_chars, 1)
     ave_word_len = (sum(len(w) for w in words) / len(words)) if words else 0
-    has_images = len(page.images) > 0
-    text_density = len(text) / max(page.width * page.height, 1)
+    # has_images = len(page.images) > 0
+    # text_density = len(text) / max(page.width * page.height, 1)
+    has_images = len(page_images) > 0
+    text_density = len(text) / max(page_width * page_height, 1)
     is_sparse = len(text) < 100
 
     return{
@@ -1571,16 +1626,23 @@ def _sort_pdf_pages(file_path: pathlib.Path | str, vis_model: str) -> list:
 
         for p, page in enumerate(pdf.pages):
             words = page.extract_words()
-            if not words: continue
-
-            if _two_columns(words, page.width):
-                text: str = _extract_two_column_page(page)
-                extraction_method = "two_column"
+            if not words:
+                logger.warning(f"No words extracted, attempting to use {vis_model} for extraction | {p} / {total_pages}")
+                try:
+                    text = _extract_page_multimodal(page, vis_model)
+                    extraction_method = f"Multimodal: {vis_model}: no words"
+                except Exception as e:
+                    logger.error(f"Unable to extract words or text from page {p}")
+                    continue 
             else:
-                text: str = page.extract_text() or ""
-                extraction_method = "standard"
+                if _two_columns(words, page.width):
+                    text: str = _extract_two_column_page(page)
+                    extraction_method = "two_column"
+                else:
+                    text: str = page.extract_text() or ""
+                    extraction_method = "standard"
 
-            page_score = _score_page_quality(page, text)
+            page_score = _score_page_quality(text, page.chars, page.images, page.width, page.height)
 
             if page_score["is_suspicious"]:
                 logger.info(f"Page {p} is suspicious | Angle Ratio: {page_score['angled_ratio']} | Average Word Length: {page_score['ave_word_len']} | Has Images: {page_score['has_images']} | Text Density: {page_score['text_density']} | Is Sparse: {page_score['is_sparse']}")
